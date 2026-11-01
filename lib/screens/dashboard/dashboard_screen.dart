@@ -9,6 +9,7 @@ import '../../core/widgets/ts_card.dart';
 import '../../core/widgets/ts_dialog.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../providers/auth_controller.dart';
+import '../analysis/ai_analysis_screen.dart';
 import 'widgets/activity_feed.dart';
 import 'widgets/budget_alert_banner.dart';
 import 'widgets/dashboard_header.dart';
@@ -201,7 +202,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     label: 'Phân tích',
                     icon: Icons.insights_rounded,
                     color: AppColors.violet,
-                    onTap: () => setState(() => _tabIndex = 1),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AiAnalysisScreen(),
+                      ),
+                    ),
                   ),
                   TsQuickAction(
                     label: 'Đối tác',
