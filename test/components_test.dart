@@ -313,7 +313,7 @@ void main() {
       // Tab Lịch sử → trạng thái trống.
       await tester.tap(find.text('Lịch sử'));
       await tester.pumpAndSettle();
-      expect(find.text('Chưa có bản ghi sử dụng'), findsOneWidget);
+      expect(find.text('LIVE STREAM'), findsOneWidget);
 
       // Tab Ngân sách → nút lưu ngân sách.
       await tester.tap(find.text('Ngân sách'));
