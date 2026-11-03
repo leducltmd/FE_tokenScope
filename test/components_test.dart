@@ -315,18 +315,37 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Chưa có bản ghi sử dụng'), findsOneWidget);
 
-      // Tab Ngân sách → nút lưu ngân sách.
-      await tester.tap(find.text('Ngân sách'));
-      await tester.pumpAndSettle();
-      expect(find.text('Lưu ngân sách'), findsOneWidget);
-
       // Tab Cài đặt → hồ sơ.
       await tester.tap(find.text('Cài đặt'));
       await tester.pumpAndSettle();
       expect(find.text('Hồ sơ'), findsOneWidget);
     });
 
-    testWidgets('cảnh báo ngân sách mở tab ngân sách', (tester) async {
+    testWidgets('tab Ngân sách mở trang quản lý ngân sách AI', (tester) async {
+      final controller = AuthController();
+
+      await tester.pumpWidget(
+        MaterialApp(home: DashboardScreen(controller: controller)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Ngân sách'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Quản lý ngân sách AI'), findsOneWidget);
+      expect(find.text('Chi phí đã dùng'), findsOneWidget);
+
+      // Cuộn xuống thấy nút lưu ngân sách.
+      await tester.scrollUntilVisible(
+        find.text('Lưu ngân sách'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Lưu ngân sách'), findsOneWidget);
+    });
+
+    testWidgets('cảnh báo ngân sách mở trang quản lý ngân sách', (tester) async {
       final controller = AuthController();
 
       await tester.pumpWidget(
@@ -337,7 +356,7 @@ void main() {
       await tester.tap(find.text('Cảnh báo ngân sách'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Lưu ngân sách'), findsOneWidget);
+      expect(find.text('Quản lý ngân sách AI'), findsOneWidget);
     });
   });
 }

@@ -66,6 +66,8 @@ lib/
 │   └── auth_controller.dart
 ├── screens/
 │   ├── auth/           # Login · Register · ForgotPassword
+│   ├── analysis/       # Phân tích sử dụng AI + biểu đồ
+│   ├── budget/         # Quản lý ngân sách AI + thành phần ngân sách
 │   └── dashboard/
 │       ├── dashboard_screen.dart
 │       └── widgets/    # Header · Alert · Hero · QuickActions · WeeklyChart ·
@@ -96,6 +98,33 @@ Màn hình `DashboardScreen` bố cục theo thứ tự:
 7. **Truy vấn gần nhất** — model, dự án, số token và chi phí.
 8. **Thanh điều hướng dưới** — Tổng quan · Lịch sử · Ngân sách · Cài đặt.
 
+Bấm vào mục **"Ngân sách"** ở thanh điều hướng dưới (hoặc thẻ "Cảnh báo
+ngân sách" / ô "Cảnh báo" ở lưới hành động nhanh) sẽ mở trang **Quản lý
+ngân sách AI**.
+
+## Trang quản lý ngân sách AI
+
+Màn hình `BudgetScreen` (`lib/screens/budget/`) bố cục theo thứ tự:
+
+1. **Đầu trang** — logo + "TokenScope" + huy hiệu "Live", chip chu kỳ tính
+   toán ("CHU KỲ: 01/10 - 31/10"), tiêu đề "Quản lý ngân sách AI".
+2. **Thẻ hạn mức tổng** — chi phí đã dùng `$34.80 / $40.00`, thẻ tỷ lệ
+   `87.0% HẠN MỨC`, số tiền còn lại.
+3. **Dải cảnh báo đỏ** — đã vượt ngưỡng an toàn 80% ($32.00).
+4. **Thanh tiêu trình** — có vạch đánh dấu ngưỡng cảnh báo, chú thích
+   `$0.00 · Ngưỡng: $32.00 · Trần: $40.00`.
+5. **Dự báo chi tiêu AI cuối tháng** — dự báo chạm mức `$41.20` ngày 31/10.
+6. **Công tắc giới hạn rate-limit tự động** — bật/tắt.
+7. **Phân bổ ngân sách** — chuyển đổi giữa *Theo nhà cung cấp* và *Theo dự
+   án (3)*; mỗi khoản có thanh tiến trình, % hạn mức đã dùng, số tiền còn
+   lại và huy hiệu trạng thái (Đang ổn định / Gần chạm hạn mức / Cần mở rộng
+   ngay).
+8. **Điều chỉnh ngân sách & ngưỡng cảnh báo** — nút "Lưu ngân sách".
+9. **Lịch sử chu kỳ thanh toán trước**.
+
+Thanh điều hướng dưới vẫn hiển thị với mục **"Ngân sách"** đang chọn; chọn
+mục khác sẽ quay lại bảng điều khiển tổng quan.
+
 ## Kết nối backend
 
 Backend TokenScope (Express + Prisma + SQL Server) đã được dựng sẵn tại
@@ -110,7 +139,34 @@ TokenScopeApp(authController: AuthController(service: ApiAuthService()));
 | Nền tảng              | URL mặc định                |
 | --------------------- | --------------------------- |
 | Flutter Web / Desktop | `http://localhost:3000/api` |
-| Android Emulator      | `http://10.0.2.2:3000/api`  |
+| Android Emulator      | dò tự xem bảng bên dưới    |
+
+**Các host loopback của Android Emulator** — mỗi loại emulator dùng một địa
+chỉ khác nhau, `ApiAuthService` sẽ thử lần lượt cho tới khi kết nối được:
+
+| Emulator                       | Host loopback |
+| ------------------------------ | ------------- |
+| Genymotion                     | `10.0.3.2`    |
+| Android Studio Emulator        | `10.0.3.2`    |
+| AVD dùng kernel QEMU cũ         | `10.0.2.2`    |
+| `adb reverse tcp:3000 tcp:3000` | `127.0.0.1`   |
+
+Trước khi gửi request thật, app gọi `/api/health` với timeout ngắn (4 giây)
+để dò host nào đang chạy backend. Nhờ vậy một địa chỉ không phản hồi bị bỏ
+qua nhanh thay vì làm người dùng chờ hết timeout của request.
+
+Nếu vẫn không được, dùng `adb reverse` cho chắc:
+
+```bash
+adb reverse tcp:3000 tcp:3000
+```
+
+> **Lỗi "Không kết nối được tới máy chủ TokenScope"** nghĩa là app không gọi
+> được backend. Hãy kiểm tra backend đã chạy chưa (`npm run dev` trong
+> `BE_tokenScope`) và cổng `3000` có thông từ emulator hay không. Thông báo
+> này khác với lỗi "Email hoặc mật khẩu không đúng" — lỗi sau nghĩa là kết
+> nối đã thành công nhưng thông tin đăng nhập sai (email trong DB được lưu
+> dạng chữ thường, kể cả khi bạn gõ hoa/thường khác nhau).
 
 Khi chạy trên thiết bị vật lý hoặc muốn trỏ về host khác, dùng
 `--dart-define`:
@@ -173,6 +229,7 @@ Bộ test gồm:
 - `test/widget_test.dart` — luồng UI (dùng mock service)
 - `test/auth_user_test.dart` — quy tắc hiển thị tên (tên đệm + tên)
 - `test/dashboard_test.dart` — kiểm tra bố cục dashboard ở khung 390×844
+- `test/budget_test.dart` — kiểm tra trang quản lý ngân sách AI
 - `test/components_test.dart` — thư viện thành phần giao diện
 - `test/golden_test.dart` — ảnh giao diện 4 màn hình ở khung 390×844
 - `test/api_integration_test.dart` — tích hợp thật với backend (tự bỏ qua nếu

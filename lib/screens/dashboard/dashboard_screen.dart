@@ -10,6 +10,8 @@ import '../../core/widgets/ts_dialog.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../providers/auth_controller.dart';
 import '../analysis/ai_analysis_screen.dart';
+import '../budget/budget_screen.dart';
+import '../projects/projects_screen.dart';
 import 'widgets/activity_feed.dart';
 import 'widgets/budget_alert_banner.dart';
 import 'widgets/dashboard_header.dart';
@@ -137,14 +139,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: switch (_tabIndex) {
                     0 => _buildOverview(),
                     1 => _buildHistory(),
-                    2 => _buildBudget(),
                     _ => _buildSettings(),
                   },
                 ),
                 TsBottomNavigation(
                   items: _navItems,
                   currentIndex: _tabIndex,
-                  onChanged: (index) => setState(() => _tabIndex = index),
+                  onChanged: (index) {
+                    // "Ngân sách" mở trang quản lý ngân sách AI riêng.
+                    if (index == 2) {
+                      _openBudgetScreen();
+                      return;
+                    }
+                    setState(() => _tabIndex = index);
+                  },
                 ),
               ],
             );
@@ -180,7 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 message:
                     'Đã sử dụng 87% ngân sách tháng (\$34.80 / \$40.00). '
                     'Chạm để điều chỉnh.',
-                onTap: () => setState(() => _tabIndex = 2),
+                onTap: _openBudgetScreen,
               ),
               const SizedBox(height: AppSpacing.space16),
               TsHeroMetricCard(
@@ -221,16 +229,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     label: 'Dự án',
                     icon: Icons.folder_special_rounded,
                     color: AppColors.azure,
-                    onTap: () => _showInfo(
-                      'Dự án',
-                      '4 dự án đang dùng token: Copilot Backend, Marketing Agent, RAG Search và Website Bot.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ProjectsScreen(),
+                      ),
                     ),
                   ),
                   TsQuickAction(
                     label: 'Cảnh báo',
                     icon: Icons.notifications_active_rounded,
                     color: AppColors.tangerine,
-                    onTap: () => setState(() => _tabIndex = 2),
+                    onTap: _openBudgetScreen,
                   ),
                 ],
               ),
@@ -323,62 +332,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               'Xóa bộ lọc để xem toàn bộ lịch sử sử dụng.',
           actionLabel: 'Xóa bộ lọc',
           onAction: () => setState(() {}),
-        ),
-      ],
-    );
-  }
-
-  // ── Ngân sách ─────────────────────────────────────────────────────────
-  Widget _buildBudget() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screenPadding,
-        AppSpacing.space16,
-        AppSpacing.screenPadding,
-        AppSpacing.space32,
-      ),
-      children: [
-        _buildSectionTitle('Ngân sách tháng này', 'Tháng 11'),
-        const SizedBox(height: AppSpacing.space12),
-        TsCard(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ngân sách tháng 11', style: AppTypography.h3),
-              const SizedBox(height: AppSpacing.space8),
-              Row(
-                children: [
-                  Text(
-                    '\$34.80 USD',
-                    style: AppTypography.label.copyWith(color: AppColors.navy),
-                  ),
-                  Text(' / \$40.00 USD', style: AppTypography.bodySmall),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: 0.87,
-                  minHeight: 8,
-                  backgroundColor: AppColors.border,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.warning),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Đã dùng 87% · Còn lại \$5.20 USD',
-                style: AppTypography.bodySmall,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space24),
-        TsButton(
-          label: 'Lưu ngân sách',
-          icon: Icons.save_rounded,
-          onPressed: _confirmSaveBudget,
         ),
       ],
     );
@@ -503,6 +456,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ── Hành động ─────────────────────────────────────────────────────────
+  /// Mở trang quản lý ngân sách AI.
+  void _openBudgetScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const BudgetScreen()),
+    );
+  }
+
   void _showInfo(String title, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$title — $message')),
@@ -520,22 +480,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     await widget.controller.logout();
     widget.onLogout?.call();
-  }
-
-  Future<void> _confirmSaveBudget() async {
-    final confirmed = await TsDialog.show(
-      context,
-      title: 'Lưu ngân sách mới?',
-      message:
-          'Ngân sách tháng này sẽ được đặt thành \$40.00 USD. '
-          'Bạn sẽ nhận cảnh báo khi sử dụng đến 80%.',
-      confirmLabel: 'Lưu ngân sách',
-    );
-    if (!confirmed || !mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã cập nhật ngân sách tháng 11.')),
-    );
   }
 }
 

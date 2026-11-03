@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backend TokenScope chạy trên máy host ở http://<host>:3000/api (HTTP, không
+    phải HTTPS). Android từ API 28 chặn cleartext HTTP theo mặc định, nên
+    cần mở cho các host emulator/loopback ở môi trường development.
+
+    Lưu ý: file này chỉ nằm trong bản build debug/profile. Khi build release
+    phải dùng HTTPS hoặc thu hẹp danh sách domain bên dưới.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Genymotion & Android Studio Emulator: gateway NAT của emulator. -->
+        <domain includeSubdomains="false">10.0.3.2</domain>
+        <!-- AVD dùng kernel QEMU cũ. -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Dùng khi đã chạy `adb reverse tcp:3000 tcp:3000`. -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

@@ -11,7 +11,7 @@ import 'package:tokenscope/services/api_auth_service.dart';
 /// Bỏ qua nếu backend không khởi động tại http://localhost:3000.
 void main() {
   final service = ApiAuthService(
-    config: const ApiConfig(baseUrl: 'http://localhost:3000/api'),
+    config: const ApiConfig(urls: <String>['http://localhost:3000/api']),
   );
 
   Future<bool> backendAvailable() async {

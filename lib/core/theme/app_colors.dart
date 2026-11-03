@@ -63,6 +63,30 @@ abstract final class AppColors {
   /// Lỗi — kết nối thất bại, lỗi API.
   static const Color error = Color(0xFFDC2626);
 
+  /// Đỏ đậm — vượt ngưỡng ngân sách (mức tiêu >= 85%).
+  static const Color danger = Color(0xFFBA1A1A);
+
+  /// Nền đỏ nhạt — huy hiệu cảnh báo vượt ngưỡng.
+  static const Color dangerLight = Color(0xFFFFDAD6);
+
+  /// Xanh lam rất nhạt — nền thẻ số liệu tổng quan.
+  static const Color indigoSoft = Color(0xFFF1F3FF);
+
+  /// Xanh lam nhạt — nền thanh tiêu trình chưa đạt.
+  static const Color indigoTrack = Color(0xFFE1E8FD);
+
+  /// Xanh ngọc — mảng phân bổ dự án.
+  static const Color aqua = Color(0xFF57DFFE);
+
+  /// Tím đậm — mảng phân bổ dự án.
+  static const Color grape = Color(0xFF8455EF);
+
+  /// Chàm đậm — nút hành động chính trong thẻ dự án.
+  static const Color indigo = Color(0xFF4648D4);
+
+  /// Chàm sáng — điểm cuối của dải chuyển màu nút.
+  static const Color indigoLight = Color(0xFF6F71DD);
+
   // ── Màu phụ trợ (sinh ra từ bảng màu gốc) ───────────────────────────
   static const Color primaryLight = Color(0xFFEEF2FF);
   static const Color primaryBorder = Color(0xFFC7D2FE);
