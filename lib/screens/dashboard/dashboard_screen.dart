@@ -7,8 +7,9 @@ import '../../core/widgets/ts_bottom_navigation.dart';
 import '../../core/widgets/ts_button.dart';
 import '../../core/widgets/ts_card.dart';
 import '../../core/widgets/ts_dialog.dart';
-import '../../core/widgets/ts_states.dart';
 import '../../providers/auth_controller.dart';
+import '../../providers/usage_history_controller.dart';
+import '../usage_history/usage_history_screen.dart';
 import '../analysis/ai_analysis_screen.dart';
 import '../budget/budget_screen.dart';
 import '../projects/projects_screen.dart';
@@ -41,6 +42,13 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _tabIndex = 0;
+  late final UsageHistoryController _historyController = UsageHistoryController();
+
+  @override
+  void dispose() {
+    _historyController.dispose();
+    super.dispose();
+  }
   String _range = '7 ngày qua';
 
   static const _navItems = [
@@ -315,25 +323,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ── Lịch sử ───────────────────────────────────────────────────────────
   Widget _buildHistory() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screenPadding,
-        AppSpacing.space16,
-        AppSpacing.screenPadding,
-        AppSpacing.space32,
-      ),
-      children: [
-        _buildSectionTitle('Lịch sử sử dụng', 'Hôm nay'),
-        const SizedBox(height: AppSpacing.space12),
-        TsEmptyState(
-          title: 'Chưa có bản ghi sử dụng',
-          message:
-              'Không tìm thấy dữ liệu phù hợp với bộ lọc hiện tại. '
-              'Xóa bộ lọc để xem toàn bộ lịch sử sử dụng.',
-          actionLabel: 'Xóa bộ lọc',
-          onAction: () => setState(() {}),
-        ),
-      ],
+    return UsageHistoryScreen(
+      controller: _historyController,
+      userName: widget.controller.displayName,
+      embedded: true,
+      onAvatar: () => setState(() => _tabIndex = 3),
+      onNotifications: () => _showInfo('Thông báo', 'Bạn không có thông báo mới.'),
     );
   }
 
