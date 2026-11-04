@@ -99,9 +99,8 @@ class AuthUser {
 
 /// Lớp trừu tượng cho nguồn dữ liệu xác thực.
 ///
-/// Hiện tại dùng [MockAuthService] để chạy giao diện độc lập.
-/// Khi backend sẵn sàng, thay bằng [ApiAuthService] trong
-/// `lib/services/api_auth_service.dart`.
+/// Mặc định ứng dụng dùng [ApiAuthService] (backend thật).
+/// [MockAuthService] chỉ còn lại để chạy giao diện độc lập trong test.
 abstract class AuthService {
   Future<AuthResult> login({
     required String email,

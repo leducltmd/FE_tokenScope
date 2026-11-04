@@ -31,6 +31,26 @@
 
   <title>tokenscope</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /*
+      Toàn bộ vùng hiển thị phải khớp chính xác với visual viewport.
+      Nếu vùng chứa app ngắn hơn viewport (ví dụ dùng `height: 95vh`),
+      engine sẽ nhận một `physicalSize` cũ và tính ra `viewInsets` âm —
+      gây ra assertion "ViewInsets cannot be negative" (flutter/flutter#175074).
+    */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background-color: #F7F8FA;
+    }
+    flutter-view {
+      position: absolute;
+      inset: 0;
+    }
+  </style>
 </head>
 <body>
   <!--
@@ -42,5 +62,47 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    /*
+      Chặn assertion "ViewInsets cannot be negative" của Flutter web engine.
+
+      Đây là lỗi đã biết ở tầng engine (flutter/flutter#175074): khi bàn phím
+      ảo bị ẩn hoặc cửa sổ trình duyệt resize, engine có thể tính ra
+      `viewInsets.bottom` bị âm và `assert` trong
+      `lib/_engine/engine/window.dart` bắn ra DartError.
+
+      Lỗi này CHỈ xảy ra ở chế độ debug (bản release đã bị loại bỏ assert)
+      và KHÔNG ảnh hưởng tới bố cục hiển thị, nên ta chỉ chặn thông báo
+      để console không bị spam.
+
+      Xem: https://github.com/flutter/flutter/issues/175074
+    */
+    (function () {
+      var NEEDLE = 'ViewInsets cannot be negative';
+
+      // 1. Lỗi này là một rejected promise không được xử lý.
+      //    Chrome tự log "Uncaught (in promise) ..." — chặn event này.
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event.reason;
+        var text = reason && reason.message ? reason.message : String(reason);
+        if (text.indexOf(NEEDLE) !== -1) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      });
+
+      // 2. Một số phiên bản engine log qua console.error thay vì event trên.
+      var originalError = console.error;
+      console.error = function () {
+        var args = Array.prototype.slice.call(arguments);
+        var first = args.length > 0 ? String(args[0]) : '';
+        if (first.indexOf(NEEDLE) !== -1) {
+          return;
+        }
+        originalError.apply(console, args);
+      };
+    })();
+  </script>
 </body>
 </html>

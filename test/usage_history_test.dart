@@ -5,7 +5,7 @@ import 'package:tokenscope/core/theme/app_theme.dart';
 import 'package:tokenscope/models/usage_record.dart';
 import 'package:tokenscope/providers/usage_history_controller.dart';
 import 'package:tokenscope/screens/usage_history/usage_history_screen.dart';
-import 'package:tokenscope/services/usage_history_service.dart';
+import 'helpers/mock_usage_history_service.dart';
 
 Widget _wrap(Widget child) {
   return MaterialApp(

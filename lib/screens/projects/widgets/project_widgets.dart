@@ -60,6 +60,7 @@ class Project {
     required this.systemSharePercent,
     required this.models,
     required this.color,
+    this.projectCount = 0,
   });
 
   final String name;
@@ -89,6 +90,9 @@ class Project {
   final List<ProjectModel> models;
 
   final Color color;
+
+  /// Tổng số dự án đang chạy trong hệ thống.
+  final int projectCount;
 
   double get remaining => limit - spent;
 
@@ -842,7 +846,7 @@ class ProjectCard extends StatelessWidget {
   // ── Dòng kỳ tính toán ────────────────────────────────────────────────
   Widget _buildMeta() {
     return Text(
-      '${project.period} · 3 dự án đang chạy',
+      '${project.period} · ${project.projectCount} dự án đang chạy',
       style: AppTypography.bodySmall.copyWith(fontSize: 11.5),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,

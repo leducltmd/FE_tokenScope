@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tokenscope/core/theme/app_theme.dart';
 import 'package:tokenscope/screens/projects/projects_screen.dart';
 
+import 'helpers/fake_controllers.dart';
 import 'helpers/font_loader.dart';
 
 /// Kiểm thử màn hình "Quản lý dự án".
@@ -15,7 +16,9 @@ void main() {
   Widget wrap() {
     return MaterialApp(
       theme: AppTheme.light,
-      home: const Scaffold(body: ProjectsScreen()),
+      home: Scaffold(
+        body: ProjectsScreen(controller: buildFakeProjectsController()),
+      ),
     );
   }
 
@@ -40,23 +43,26 @@ void main() {
 
     // Bộ lọc.
     expect(find.text('Tất cả'), findsOneWidget);
-    // "Đang chạy" xuất hiện ở cả chip lọc và huy hiệu trạng thái dự án.
+    // "Đang chạy" xuất hiện ở huy hiệu trạng thái dự án.
     expect(find.text('Đang chạy'), findsAtLeastNWidgets(1));
     expect(find.text('Gần chạm trần (85%+)'), findsOneWidget);
 
-    // Thẻ tóm tắt.
+    // Thẻ tóm tắt — số liệu lấy từ backend (fake service trong test).
     expect(find.text('Tổng quan tiêu thụ'), findsOneWidget);
-    // Chuỗi này lặp lại ở thẻ tóm tắt và ở dòng kỳ tính toán của từng thẻ dự án.
-    expect(find.text('Tháng 10/2025 · 3 dự án đang chạy'), findsAtLeastNWidgets(1));
+    final now = DateTime.now();
+    expect(
+      find.text('Tháng ${now.month}/${now.year} · 3 dự án đang chạy'),
+      findsAtLeastNWidgets(1),
+    );
     expect(find.text('TỔNG CHI PHÍ'), findsOneWidget);
     expect(find.text('LƯỢNG TOKEN ĐÃ DÙNG'), findsOneWidget);
     expect(find.text('\$34.80'), findsOneWidget);
     expect(find.text('2.450.000'), findsOneWidget);
-    expect(find.text('Còn lại \$5.20 USD'), findsOneWidget);
+    expect(find.text('Còn lại \$12.20 USD'), findsOneWidget);
     // Phân bổ theo dự án.
-    expect(find.text('Chatbot (55%)'), findsOneWidget);
-    expect(find.text('Content (20%)'), findsOneWidget);
-    expect(find.text('Dev Assistant (16%)'), findsOneWidget);
+    expect(find.text('Chatbot Support (55%)'), findsOneWidget);
+    expect(find.text('Content Generator (28%)'), findsOneWidget);
+    expect(find.text('Developer Assistant (16%)'), findsOneWidget);
 
     // Điều hướng dưới.
     expect(find.text('Tổng quan'), findsOneWidget);

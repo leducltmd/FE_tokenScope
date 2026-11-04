@@ -7,12 +7,16 @@ import '../../core/widgets/ts_bottom_navigation.dart';
 import '../../core/widgets/ts_button.dart';
 import '../../core/widgets/ts_card.dart';
 import '../../core/widgets/ts_dialog.dart';
+import '../../models/usage_summary.dart';
 import '../../providers/auth_controller.dart';
+import '../../providers/budget_controller.dart';
+import '../../providers/dashboard_controller.dart';
 import '../../providers/usage_history_controller.dart';
 import '../usage_history/usage_history_screen.dart';
 import '../analysis/ai_analysis_screen.dart';
 import '../budget/budget_screen.dart';
 import '../projects/projects_screen.dart';
+import '../providers/providers_screen.dart';
 import 'widgets/activity_feed.dart';
 import 'widgets/budget_alert_banner.dart';
 import 'widgets/dashboard_header.dart';
@@ -31,10 +35,22 @@ class DashboardScreen extends StatefulWidget {
     super.key,
     required this.controller,
     this.onLogout,
+    this.dashboardController,
+    this.historyController,
+    this.budgetController,
   });
 
   final AuthController controller;
   final VoidCallback? onLogout;
+
+  /// Controller tổng quan — nếu null thì tự tạo (gọi backend thật).
+  final DashboardController? dashboardController;
+
+  /// Controller lịch sử — nếu null thì tự tạo (gọi backend thật).
+  final UsageHistoryController? historyController;
+
+  /// Controller ngân sách — nếu null thì tự tạo (gọi backend thật).
+  final BudgetController? budgetController;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -42,11 +58,26 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _tabIndex = 0;
-  late final UsageHistoryController _historyController = UsageHistoryController();
+  late final UsageHistoryController _historyController =
+      widget.historyController ?? UsageHistoryController();
+
+  /// Số liệu tổng quan lấy từ backend thật.
+  late final DashboardController _dashboardController =
+      widget.dashboardController ?? DashboardController();
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardController.load();
+    // Nạp sẵn vài bản ghi gần nhất cho mục "Truy vấn gần nhất".
+    _historyController.loadRecords();
+  }
 
   @override
   void dispose() {
-    _historyController.dispose();
+    // Chỉ dispose những controller do màn hình tự tạo.
+    if (widget.historyController == null) _historyController.dispose();
+    if (widget.dashboardController == null) _dashboardController.dispose();
     super.dispose();
   }
   String _range = '7 ngày qua';
@@ -60,76 +91,127 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   static const _ranges = ['7 ngày qua', '30 ngày qua', '3 tháng qua'];
 
-  // ── Dữ liệu mẫu theo đặc tả ──────────────────────────────────────────
-  static const _providers = [
-    TsProviderUsage(
-      name: 'OpenAI',
-      percent: 49,
-      models: 'GPT-4o, GPT-3.5 Turbo',
-      tokens: '1.200.000',
-      cost: '\$19.20 USD',
-      letter: 'O',
-      color: AppColors.emerald,
-    ),
-    TsProviderUsage(
-      name: 'Google Gemini',
-      percent: 33,
-      models: 'Gemini 1.5 Pro, Flash',
-      tokens: '800.000',
-      cost: '\$7.40 USD',
-      letter: 'G',
-      color: AppColors.azure,
-    ),
-    TsProviderUsage(
-      name: 'Anthropic Claude',
-      percent: 18,
-      models: 'Claude 3.5 Sonnet, Haiku',
-      tokens: '450.000',
-      cost: '\$8.20 USD',
-      letter: 'A',
-      color: AppColors.tangerine,
-    ),
-  ];
+  /// Màu nhận diện theo loại nhà cung cấp.
+  static const _providerColors = <String, Color>{
+    'openai': AppColors.emerald,
+    'anthropic': AppColors.tangerine,
+    'google': AppColors.azure,
+    'mistral': AppColors.tangerine,
+    'groq': AppColors.grape,
+  };
 
-  static const _weeklyPoints = [
-    TsWeeklyPoint(label: 'T2', value: 180000, display: '180k'),
-    TsWeeklyPoint(label: 'T3', value: 240000, display: '240k'),
-    TsWeeklyPoint(label: 'T4', value: 205000, display: '205k'),
-    TsWeeklyPoint(label: 'T5', value: 450000, display: '450k', isHighlighted: true),
-    TsWeeklyPoint(label: 'T6', value: 320000, display: '320k'),
-    TsWeeklyPoint(label: 'T7', value: 285000, display: '285k'),
-    TsWeeklyPoint(label: 'CN', value: 290000, display: '290k'),
-  ];
+  /// Định dạng số theo chuẩn Việt Nam — `2.450.000`.
+  static String _formatNumber(int number) {
+    final str = number.toString();
+    final buffer = StringBuffer();
+    final len = str.length;
+    for (var i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) buffer.write('.');
+      buffer.write(str[i]);
+    }
+    return buffer.toString();
+  }
 
-  static const _activities = [
-    TsActivityEntry(
-      model: 'claude-3-5-sonnet',
-      project: 'Copilot Backend',
-      tokens: '1.420 tkn',
-      cost: '\$0.0042',
-      time: '14:28:05',
-      letter: 'C',
-      color: AppColors.tangerine,
-    ),
-    TsActivityEntry(
-      model: 'gpt-4o',
-      project: 'Marketing Agent',
-      tokens: '3.860 tkn',
-      cost: '\$0.0098',
-      time: '14:25:41',
-      letter: 'O',
-      color: AppColors.emerald,
-    ),
-    TsActivityEntry(
-      model: 'gemini-1.5-pro',
-      project: 'RAG Search',
-      tokens: '2.130 tkn',
-      cost: '\$0.0031',
-      time: '14:19:12',
-      letter: 'G',
-      color: AppColors.azure,
-    ),
-  ];
+  // ── Dữ liệu thật từ backend ───────────────────────────────────────────
+  UsageSummary? get _summary => _dashboardController.summary;
+
+  /// Danh sách nhà cung cấp dựng từ dữ liệu thật.
+  List<TsProviderUsage> get _providerUsages {
+    final summary = _summary;
+    if (summary == null) return const <TsProviderUsage>[];
+
+    final totalCost = summary.totalCost;
+
+    return summary.byProvider.map((item) {
+      final percent = totalCost <= 0
+          ? 0
+          : ((item.totalCost / totalCost) * 100).round().clamp(0, 100);
+      return TsProviderUsage(
+        name: item.provider,
+        percent: percent,
+        models: '${item.requestCount} lượt gọi · ${_formatNumber(item.totalTokens)} token',
+        tokens: _formatNumber(item.totalTokens),
+        cost: '\$${item.totalCost.toStringAsFixed(2)} USD',
+        letter: item.provider.isEmpty
+            ? '?'
+            : item.provider.substring(0, 1).toUpperCase(),
+        color: _providerColors[item.providerType] ?? AppColors.primary,
+      );
+    }).toList();
+  }
+
+  /// Điểm biểu đồ 7 ngày lấy từ dữ liệu thật.
+  List<TsWeeklyPoint> get _weeklyPoints {
+    final summary = _summary;
+    if (summary == null || summary.daily.isEmpty) {
+      return const <TsWeeklyPoint>[];
+    }
+
+    const labels = <String>['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    final days = summary.daily.length > 7
+        ? summary.daily.sublist(summary.daily.length - 7)
+        : summary.daily;
+
+    final maxValue = days.fold<int>(
+      0,
+      (max, d) => d.totalTokens > max ? d.totalTokens : max,
+    );
+
+    return days.asMap().entries.map((entry) {
+      final index = entry.key;
+      final day = entry.value;
+      final value = day.totalTokens;
+      final label = index < labels.length
+          ? labels[labels.length - days.length + index]
+          : day.date.substring(5);
+      return TsWeeklyPoint(
+        label: label,
+        value: value.toDouble(),
+        display: value >= 1000
+            ? '${(value / 1000).toStringAsFixed(0)}k'
+            : '$value',
+        isHighlighted: maxValue > 0 && value == maxValue,
+      );
+    }).toList();
+  }
+
+  /// Tổng token 7 ngày gần nhất.
+  double get _weeklyTotal => _weeklyPoints.fold<double>(
+    0,
+    (sum, point) => sum + point.value,
+  );
+
+  /// Lượt gọi gần nhất từ controller lịch sử.
+  List<TsActivityEntry> get _recentActivities {
+    return _historyController.records.take(3).map((record) {
+      final letter = record.provider.isEmpty
+          ? '?'
+          : record.provider.substring(0, 1).toUpperCase();
+      return TsActivityEntry(
+        model: record.model,
+        project: record.project,
+        tokens: '${_formatNumber(record.totalTokens)} tkn',
+        cost: '\$${record.cost.toStringAsFixed(4)}',
+        time: record.timeDisplay,
+        letter: letter,
+        color: _providerColors[_providerTypeOf(record.provider)] ??
+            AppColors.primary,
+      );
+    }).toList();
+  }
+
+  /// Suy ra mã providerType từ tên nhà cung cấp.
+  static String _providerTypeOf(String provider) {
+    final value = provider.toLowerCase();
+    if (value.contains('openai')) return 'openai';
+    if (value.contains('gemini') || value.contains('google')) return 'google';
+    if (value.contains('anthropic') || value.contains('claude')) {
+      return 'anthropic';
+    }
+    if (value.contains('mistral')) return 'mistral';
+    if (value.contains('groq')) return 'groq';
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +221,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         bottom: false,
         // Lắng nghe controller để lời chào cập nhật theo tên vừa đăng ký.
         child: ListenableBuilder(
-          listenable: widget.controller,
+          listenable: Listenable.merge([widget.controller, _dashboardController]),
           builder: (context, _) {
             return Column(
               children: [
@@ -192,23 +274,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               TsBudgetAlertBanner(
                 title: 'Cảnh báo ngân sách',
-                percentLabel: '87% mức trần',
+                percentLabel:
+                    '${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD đã dùng',
                 message:
-                    'Đã sử dụng 87% ngân sách tháng (\$34.80 / \$40.00). '
+                    'Tổng chi phí AI trong kỳ hiện tại là '
+                    '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} '
+                    '(${_summary?.requestCount ?? 0} lượt gọi). '
                     'Chạm để điều chỉnh.',
                 onTap: _openBudgetScreen,
               ),
               const SizedBox(height: AppSpacing.space16),
               TsHeroMetricCard(
-                totalTokens: '2.450.000',
+                totalTokens: _formatNumber(_summary?.totalTokens ?? 0),
                 totalTokensLabel: 'tokens',
-                costLabel: '\$34.80 USD',
-                inputTokens: '1.800.000',
+                costLabel: '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD',
+                inputTokens: _formatNumber(_summary?.totalTokens ?? 0),
                 inputPercent: 0.735,
-                outputTokens: '650.000',
+                outputTokens: '0',
                 outputPercent: 0.265,
                 budgetLabel: 'Tiến trình chi tiêu tháng',
-                remainingLabel: 'Còn lại \$5.20 / \$40.00',
+                remainingLabel:
+                    'Tổng chi phí \$${(_summary?.totalCost ?? 0).toStringAsFixed(2)}',
                 spentPercent: 0.87,
               ),
               const SizedBox(height: AppSpacing.space16),
@@ -228,9 +314,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     label: 'Đối tác',
                     icon: Icons.hub_rounded,
                     color: AppColors.emerald,
-                    onTap: () => _showInfo(
-                      'Đối tác',
-                      '3 nhà cung cấp đang kết nối: OpenAI, Google Gemini, Anthropic Claude.',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ProvidersScreen(),
+                      ),
                     ),
                   ),
                   TsQuickAction(
@@ -259,18 +346,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 'Chi tiết >',
                 onTrailingTap: () => _showInfo(
                   'Phân bổ chi tiết',
-                  'Tổng 2.450.000 token trên 3 nhà cung cấp trong tháng này.',
+                  'Tổng ${_formatNumber(_summary?.totalTokens ?? 0)} token '
+                      'trên ${_summary?.byProvider.length ?? 0} nhà cung cấp.',
                 ),
               ),
               const SizedBox(height: AppSpacing.space12),
-              for (final provider in _providers) ...[
+              for (final provider in _providerUsages) ...[
                 TsProviderUsageCard(provider: provider),
                 const SizedBox(height: AppSpacing.space12),
               ],
               const SizedBox(height: AppSpacing.space12),
-              _buildSectionTitle('Truy vấn gần nhất', '14:28:05'),
+              _buildSectionTitle('Truy vấn gần nhất', 'Hôm nay'),
               const SizedBox(height: AppSpacing.space12),
-              TsActivityFeed(entries: _activities),
+              TsActivityFeed(entries: _recentActivities),
             ],
           ),
         ),
@@ -311,7 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: AppSpacing.space8),
           Text(
-            'Tổng 7 ngày: 1.970.000 • TB: ~281k/ngày (Đỉnh: T5)',
+            'Tổng 7 ngày: ${_formatNumber(_weeklyTotal.round())} token',
             style: AppTypography.bodySmall.copyWith(fontSize: 12.5),
           ),
           const SizedBox(height: AppSpacing.space16),
@@ -454,7 +542,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// Mở trang quản lý ngân sách AI.
   void _openBudgetScreen() {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const BudgetScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => BudgetScreen(controller: widget.budgetController),
+      ),
     );
   }
 

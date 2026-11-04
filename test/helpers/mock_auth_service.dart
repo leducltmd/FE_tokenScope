@@ -1,9 +1,8 @@
 import 'dart:math';
 
-import 'auth_service.dart';
+import 'package:tokenscope/services/auth_service.dart';
 
-/// Nguồn dữ liệu xác thực giả lập — dùng để chạy và kiểm thử giao diện
-/// khi backend chưa sẵn sàng.
+/// Nguồn dữ liệu xác thực giả lập — chỉ dùng trong test widget.
 ///
 /// Mật khẩu hợp lệ: `123456`.
 class MockAuthService implements AuthService {

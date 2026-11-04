@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tokenscope/app.dart';
+import 'package:tokenscope/providers/auth_controller.dart';
+
+import 'helpers/mock_auth_service.dart';
 
 /// Bảo đảm các màn hình xác thực không bao giờ tràn bố cục (RenderFlex
 /// overflow) dù viewport nhỏ tới mức nào.
 void main() {
-  const app = TokenScopeApp(useMockService: true);
+  final app = TokenScopeApp(
+    authController: AuthController(service: MockAuthService()),
+  );
 
   for (final size in <Size>[
     const Size(390, 844),

@@ -8,8 +8,8 @@ import '../../core/widgets/ts_checkbox.dart';
 import '../../core/widgets/ts_social_button.dart';
 import '../../core/widgets/ts_text_field.dart';
 import '../../providers/auth_controller.dart';
+import '../../services/api_auth_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/mock_auth_service.dart';
 import 'auth_header.dart';
 import 'auth_status_banner.dart';
 
@@ -39,7 +39,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   late final AuthController _controller =
       widget.controller ??
-      AuthController(service: widget.authService ?? MockAuthService());
+      AuthController(service: widget.authService ?? ApiAuthService());
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();

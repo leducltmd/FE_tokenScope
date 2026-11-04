@@ -5,6 +5,7 @@ import 'package:tokenscope/core/theme/app_theme.dart';
 import 'package:tokenscope/screens/budget/budget_screen.dart';
 
 import 'helpers/font_loader.dart';
+import 'helpers/fake_controllers.dart';
 
 /// Kiểm thử màn hình "Quản lý ngân sách AI".
 void main() {
@@ -15,7 +16,9 @@ void main() {
   Widget wrap() {
     return MaterialApp(
       theme: AppTheme.light,
-      home: const Scaffold(body: BudgetScreen()),
+      home: Scaffold(
+        body: BudgetScreen(controller: buildFakeBudgetController()),
+      ),
     );
   }
 

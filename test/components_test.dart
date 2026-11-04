@@ -10,6 +10,9 @@ import 'package:tokenscope/core/widgets/ts_states.dart';
 import 'package:tokenscope/screens/dashboard/dashboard_screen.dart';
 import 'package:tokenscope/providers/auth_controller.dart';
 
+import 'helpers/fake_controllers.dart';
+import 'helpers/fake_services.dart';
+
 /// Kiểm tra thư viện giao diện TokenScope — 09 nhóm thành phần.
 void main() {
   Widget wrap(Widget child) {
@@ -270,7 +273,13 @@ void main() {
       final controller = AuthController();
 
       await tester.pumpWidget(
-        MaterialApp(home: DashboardScreen(controller: controller)),
+        MaterialApp(
+          home: DashboardScreen(
+            controller: controller,
+            dashboardController: buildFakeDashboardController(),
+            historyController: buildFakeHistoryController(),
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -306,7 +315,13 @@ void main() {
       final controller = AuthController();
 
       await tester.pumpWidget(
-        MaterialApp(home: DashboardScreen(controller: controller)),
+        MaterialApp(
+          home: DashboardScreen(
+            controller: controller,
+            dashboardController: buildFakeDashboardController(),
+            historyController: buildFakeHistoryController(),
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -325,7 +340,14 @@ void main() {
       final controller = AuthController();
 
       await tester.pumpWidget(
-        MaterialApp(home: DashboardScreen(controller: controller)),
+        MaterialApp(
+          home: DashboardScreen(
+            controller: controller,
+            dashboardController: buildFakeDashboardController(),
+            historyController: buildFakeHistoryController(),
+            budgetController: buildFakeBudgetController(),
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -349,7 +371,14 @@ void main() {
       final controller = AuthController();
 
       await tester.pumpWidget(
-        MaterialApp(home: DashboardScreen(controller: controller)),
+        MaterialApp(
+          home: DashboardScreen(
+            controller: controller,
+            dashboardController: buildFakeDashboardController(),
+            historyController: buildFakeHistoryController(),
+            budgetController: buildFakeBudgetController(),
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 

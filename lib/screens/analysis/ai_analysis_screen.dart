@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/widgets/ts_loading.dart';
+import '../../core/widgets/ts_states.dart';
+import '../../models/usage_analysis.dart';
+import '../../providers/analysis_controller.dart';
 import 'widgets/analysis_charts.dart';
 
 /// Màn hình "Phân tích sử dụng AI".
@@ -10,79 +14,122 @@ import 'widgets/analysis_charts.dart';
 /// Bố cục: Thanh ứng dụng → Tiêu đề trực tiếp → Bộ lọc khoảng thời gian →
 /// Biểu đồ xu hướng tuần → Tỷ lệ theo nhà cung cấp → Cấu trúc đầu vào/đầu ra
 /// → Danh sách mô hình AI sử dụng nhiều nhất → Nút hành động nổi.
+///
+/// Toàn bộ số liệu đến từ backend thật (`GET /api/usage/analysis`).
 class AiAnalysisScreen extends StatefulWidget {
-  const AiAnalysisScreen({super.key});
+  const AiAnalysisScreen({super.key, this.controller});
+
+  /// Controller dùng chung — nếu null thì tự tạo.
+  final AnalysisController? controller;
 
   @override
   State<AiAnalysisScreen> createState() => _AiAnalysisScreenState();
 }
 
 class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
-  String _range = '7 ngày';
+  late final AnalysisController _controller =
+      widget.controller ?? AnalysisController();
 
   static const _ranges = ['Hôm nay', '7 ngày', 'Tháng này'];
 
-  // ── Dữ liệu mẫu theo đặc tả ──────────────────────────────────────────
-  static const _weekValues = <double>[
-    180000,
-    240000,
-    205000,
-    450000,
-    320000,
-    285000,
-    290000,
-  ];
+  /// Số ngày tương ứng với từng chip khoảng thời gian.
+  static const _rangeDays = <String, int>{
+    'Hôm nay': 1,
+    '7 ngày': 7,
+    'Tháng này': 30,
+  };
 
-  static const _weekLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  /// Màu nhận diện theo loại nhà cung cấp.
+  static const _providerColors = <String, Color>{
+    'openai': Color(0xFF4F46E5),
+    'anthropic': Color(0xFF8B5CF6),
+    'google': Color(0xFF38BDF8),
+    'mistral': Color(0xFFF97316),
+    'groq': Color(0xFF818CF8),
+  };
 
-  static const _providers = <TsDonutSlice>[
-    TsDonutSlice(label: 'OpenAI', value: 19.20, color: Color(0xFF4F46E5)),
-    TsDonutSlice(label: 'Anthropic', value: 8.20, color: Color(0xFF8B5CF6)),
-    TsDonutSlice(label: 'Google Gemini', value: 7.40, color: Color(0xFF38BDF8)),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _controller.load();
+  }
 
-  static const _models = <_ModelUsage>[
-    _ModelUsage(
-      name: 'gpt-4o',
-      cost: '\$12.60',
-      provider: 'OpenAI',
-      tokens: '1.300.000 tokens',
-      ratio: 1.0,
-      color: Color(0xFF4F46E5),
-    ),
-    _ModelUsage(
-      name: 'gemini-1.5-pro',
-      cost: '\$6.10',
-      provider: 'Google',
-      tokens: '850.000 tokens',
-      ratio: 0.65,
-      color: Color(0xFF0EA5E9),
-    ),
-    _ModelUsage(
-      name: 'claude-3-5-sonnet',
-      cost: '\$8.20',
-      provider: 'Anthropic',
-      tokens: '450.000 tokens',
-      ratio: 0.35,
-      color: Color(0xFF8B5CF6),
-    ),
-    _ModelUsage(
-      name: 'gemini-1.5-flash',
-      cost: '\$1.90',
-      provider: 'Google',
-      tokens: '150.000 tokens',
-      ratio: 0.12,
-      color: Color(0xFF38BDF8),
-    ),
-    _ModelUsage(
-      name: 'gpt-4o-mini',
-      cost: '\$1.60',
-      provider: 'OpenAI',
-      tokens: '100.000 tokens',
-      ratio: 0.08,
-      color: Color(0xFF818CF8),
-    ),
-  ];
+  // ── Chuyển dữ liệu thật sang model hiển thị ───────────────────────────
+  /// Nhãn ngày trong tuần từ chuỗi `YYYY-MM-DD`.
+  String _labelFor(String date) {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) return '';
+    const names = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    return names[(parsed.weekday - 1) % 7];
+  }
+
+  /// Định dạng số theo chuẩn Việt Nam — `1.970.000`.
+  static String _formatNumber(int number) {
+    final str = number.toString();
+    final buffer = StringBuffer();
+    final len = str.length;
+    for (var i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) buffer.write('.');
+      buffer.write(str[i]);
+    }
+    return buffer.toString();
+  }
+
+  List<double> _weekValues(UsageAnalysis analysis) {
+    return analysis.weekly
+        .map((point) => point.totalTokens.toDouble())
+        .toList(growable: false);
+  }
+
+  List<String> _weekDayLabels(UsageAnalysis analysis) {
+    return analysis.weekly.map((point) => _labelFor(point.date)).toList();
+  }
+
+  /// Chỉ số điểm đỉnh trong biểu đồ tuần.
+  int _peakIndex(UsageAnalysis analysis) {
+    var index = 0;
+    var best = 0;
+    for (var i = 0; i < analysis.weekly.length; i++) {
+      if (analysis.weekly[i].totalTokens > best) {
+        best = analysis.weekly[i].totalTokens;
+        index = i;
+      }
+    }
+    return index;
+  }
+
+  List<TsDonutSlice> _providerSlices(UsageAnalysis analysis) {
+    return analysis.byProvider
+        .map(
+          (provider) => TsDonutSlice(
+            label: provider.provider,
+            value: provider.totalCost,
+            color: _providerColors[provider.providerType] ??
+                const Color(0xFF4F46E5),
+          ),
+        )
+        .toList();
+  }
+
+  List<_ModelUsage> _modelUsages(UsageAnalysis analysis) {
+    final maxTokens = analysis.byModel.isEmpty
+        ? 1
+        : analysis.byModel.first.totalTokens;
+
+    return analysis.byModel
+        .map(
+          (model) => _ModelUsage(
+            name: model.model,
+            cost: '\$${model.totalCost.toStringAsFixed(2)}',
+            provider: model.provider,
+            tokens: '${_formatNumber(model.totalTokens)} tokens',
+            ratio: maxTokens > 0 ? model.totalTokens / maxTokens : 0,
+            color: _providerColors[model.providerType] ??
+                const Color(0xFF4F46E5),
+          ),
+        )
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,26 +141,59 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
           children: [
             _buildAppBar(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenPadding,
-                  AppSpacing.space8,
-                  AppSpacing.screenPadding,
-                  96,
-                ),
-                children: [
-                  _buildLiveHeader(),
-                  const SizedBox(height: AppSpacing.space16),
-                  _buildRangeFilter(),
-                  const SizedBox(height: AppSpacing.space24),
-                  _buildWeeklyTrend(),
-                  const SizedBox(height: AppSpacing.space24),
-                  _buildProviderSection(),
-                  const SizedBox(height: AppSpacing.space24),
-                  _buildInputOutputSection(),
-                  const SizedBox(height: AppSpacing.space24),
-                  _buildModelsSection(),
-                ],
+              child: ListenableBuilder(
+                listenable: _controller,
+                builder: (context, _) {
+                  if (_controller.isLoading && _controller.analysis == null) {
+                    return const SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.screenPadding),
+                        child: Column(
+                          children: [
+                            TsSkeletonCard(height: 140),
+                            SizedBox(height: AppSpacing.space12),
+                            TsSkeletonCard(height: 170),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (_controller.hasError && _controller.analysis == null) {
+                    return TsErrorState(
+                      title: 'Không thể tải dữ liệu phân tích',
+                      message: _controller.errorMessage ??
+                          'Đã xảy ra lỗi khi kết nối máy chủ. Vui lòng thử lại.',
+                      actionLabel: 'Thử lại ngay',
+                      onRetry: () => _controller.load(),
+                    );
+                  }
+
+                  final analysis = _controller.analysis;
+                  if (analysis == null) return const SizedBox.shrink();
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenPadding,
+                      AppSpacing.space8,
+                      AppSpacing.screenPadding,
+                      96,
+                    ),
+                    children: [
+                      _buildLiveHeader(),
+                      const SizedBox(height: AppSpacing.space16),
+                      _buildRangeFilter(),
+                      const SizedBox(height: AppSpacing.space24),
+                      _buildWeeklyTrend(analysis),
+                      const SizedBox(height: AppSpacing.space24),
+                      _buildProviderSection(analysis),
+                      const SizedBox(height: AppSpacing.space24),
+                      _buildInputOutputSection(analysis),
+                      const SizedBox(height: AppSpacing.space24),
+                      _buildModelsSection(analysis),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -199,14 +279,15 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
 
   // ── Bộ lọc khoảng thời gian ──────────────────────────────────────────
   Widget _buildRangeFilter() {
+    final current = _controller.days;
     return Row(
       children: [
         for (final range in _ranges) ...[
           Expanded(
             child: _RangeChip(
               label: range,
-              isSelected: range == _range,
-              onTap: () => setState(() => _range = range),
+              isSelected: _rangeDays[range] == current,
+              onTap: () => _controller.setRange(_rangeDays[range] ?? 7),
             ),
           ),
           const SizedBox(width: AppSpacing.space8),
@@ -221,7 +302,11 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
   }
 
   // ── 1 · Xu hướng tuần này ────────────────────────────────────────────
-  Widget _buildWeeklyTrend() {
+  Widget _buildWeeklyTrend(UsageAnalysis analysis) {
+    final values = _weekValues(analysis);
+    final labels = _weekDayLabels(analysis);
+    final peak = analysis.peak;
+
     return _AnalysisCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +322,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.bottomLeft,
                   child: Text(
-                    '1.970.000',
+                    _formatNumber(analysis.totalTokens),
                     style: AppTypography.h1.copyWith(fontSize: 30),
                     maxLines: 1,
                   ),
@@ -249,7 +334,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
-                    'Trung bình / ngày: 281.429',
+                    'Trung bình / ngày: ${_formatNumber(analysis.dailyAverage)}',
                     style: AppTypography.bodySmall.copyWith(fontSize: 12),
                     textAlign: TextAlign.end,
                     maxLines: 2,
@@ -281,7 +366,11 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
                 const SizedBox(width: AppSpacing.space8),
                 Expanded(
                   child: Text(
-                    'Đỉnh điểm: Thứ Năm · 450.000 tokens - \$6.40',
+                    peak == null
+                        ? 'Chưa có dữ liệu điểm đỉnh.'
+                        : 'Đỉnh điểm: ${_labelFor(peak.date)} · '
+                            '${_formatNumber(peak.totalTokens)} tokens - '
+                            '\$${peak.totalCost.toStringAsFixed(2)}',
                     style: AppTypography.bodySmall.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -296,9 +385,9 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
           ),
           const SizedBox(height: AppSpacing.space16),
           TsAnalysisWeekChart(
-            values: _weekValues,
-            labels: _weekLabels,
-            highlightIndex: 3,
+            values: values,
+            labels: labels,
+            highlightIndex: _peakIndex(analysis),
           ),
         ],
       ),
@@ -306,7 +395,10 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
   }
 
   // ── 2 · Tỷ lệ theo nhà cung cấp ──────────────────────────────────────
-  Widget _buildProviderSection() {
+  Widget _buildProviderSection(UsageAnalysis analysis) {
+    final slices = _providerSlices(analysis);
+    final total = analysis.totalCost;
+
     return _AnalysisCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,20 +409,20 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               TsDonutChart(
-                slices: _providers,
-                totalLabel: '\$34.80',
+                slices: slices,
+                totalLabel: '\$${total.toStringAsFixed(2)}',
                 size: 118,
               ),
               const SizedBox(width: AppSpacing.space12),
               Expanded(
                 child: Column(
                   children: [
-                    for (var i = 0; i < _providers.length; i++) ...[
+                    for (var i = 0; i < slices.length; i++) ...[
                       _ProviderLegend(
-                        slice: _providers[i],
-                        total: 34.80,
+                        slice: slices[i],
+                        total: total,
                       ),
-                      if (i != _providers.length - 1)
+                      if (i != slices.length - 1)
                         const SizedBox(height: AppSpacing.space12),
                     ],
                   ],
@@ -344,7 +436,11 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
   }
 
   // ── 3 · Cấu trúc đầu vào / đầu ra ─────────────────────────────────────
-  Widget _buildInputOutputSection() {
+  Widget _buildInputOutputSection(UsageAnalysis analysis) {
+    final ratio = analysis.inputRatio + analysis.outputRatio > 0
+        ? analysis.inputRatio / (analysis.inputRatio + analysis.outputRatio)
+        : 0.0;
+
     return _AnalysisCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,7 +460,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  'Tỷ lệ 2.77:1',
+                  'Tỷ lệ ${_ratioLabel(analysis)}',
                   style: AppTypography.bodySmall.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -375,7 +471,10 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.space16),
-          _InputOutputBar(inputPercent: 0.735, outputPercent: 0.265),
+          _InputOutputBar(
+            inputPercent: ratio,
+            outputPercent: 1 - ratio,
+          ),
           const SizedBox(height: AppSpacing.space16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,7 +482,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
               Expanded(
                 child: _MetricColumn(
                   label: 'ĐẦU VÀO (INPUT)',
-                  value: '1.800.000',
+                  value: _formatNumber(analysis.inputTokens),
                   caption: 'Tokens hệ thống',
                   color: AppColors.navy,
                   dotColor: const Color(0xFF1E1B4B),
@@ -393,7 +492,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
               Expanded(
                 child: _MetricColumn(
                   label: 'ĐẦU RA (OUTPUT)',
-                  value: '650.000',
+                  value: _formatNumber(analysis.outputTokens),
                   caption: 'Tokens câu trả lời',
                   color: const Color(0xFF38BDF8),
                   dotColor: const Color(0xFF38BDF8),
@@ -406,8 +505,17 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
     );
   }
 
+  /// Nhãn tỷ lệ đầu vào : đầu ra — `2.77:1`.
+  String _ratioLabel(UsageAnalysis analysis) {
+    if (analysis.outputTokens == 0) return '—';
+    final value = analysis.inputTokens / analysis.outputTokens;
+    return '${value.toStringAsFixed(2)}:1';
+  }
+
   // ── 4 · Mô hình AI sử dụng nhiều nhất ─────────────────────────────────
-  Widget _buildModelsSection() {
+  Widget _buildModelsSection(UsageAnalysis analysis) {
+    final models = _modelUsages(analysis);
+
     return _AnalysisCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,11 +527,17 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
             style: AppTypography.bodySmall.copyWith(fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.space16),
-          for (var i = 0; i < _models.length; i++) ...[
-            _ModelRow(model: _models[i], rank: i + 1),
-            if (i != _models.length - 1)
-              const SizedBox(height: AppSpacing.space16),
-          ],
+          if (models.isEmpty)
+            Text(
+              'Chưa có dữ liệu mô hình AI.',
+              style: AppTypography.bodySmall.copyWith(fontSize: 12.5),
+            )
+          else
+            for (var i = 0; i < models.length; i++) ...[
+              _ModelRow(model: models[i], rank: i + 1),
+              if (i != models.length - 1)
+                const SizedBox(height: AppSpacing.space16),
+            ],
         ],
       ),
     );

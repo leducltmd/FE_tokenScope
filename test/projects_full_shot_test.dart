@@ -5,6 +5,7 @@ import 'package:tokenscope/core/theme/app_theme.dart';
 import 'package:tokenscope/screens/projects/projects_screen.dart';
 
 import 'helpers/font_loader.dart';
+import 'helpers/fake_controllers.dart';
 
 /// Chụp toàn bộ nội dung cuộn của trang quản lý dự án.
 void main() {
@@ -18,7 +19,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: const Scaffold(body: ProjectsScreen()),
+        home: Scaffold(
+          body: ProjectsScreen(controller: buildFakeProjectsController()),
+        ),
       ),
     );
     await tester.pumpAndSettle();

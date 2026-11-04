@@ -5,6 +5,8 @@ import 'package:tokenscope/core/theme/app_theme.dart';
 import 'package:tokenscope/providers/auth_controller.dart';
 import 'package:tokenscope/screens/dashboard/dashboard_screen.dart';
 
+import 'helpers/fake_services.dart';
+
 /// Bọc dashboard trong khung 390 × 844 để mô phỏng thiết bị mobile.
 Widget _wrap() {
   return MaterialApp(
@@ -13,7 +15,11 @@ Widget _wrap() {
       body: SizedBox(
         width: 390,
         height: 844,
-        child: DashboardScreen(controller: AuthController()),
+        child: DashboardScreen(
+          controller: AuthController(),
+          dashboardController: buildFakeDashboardController(),
+          historyController: buildFakeHistoryController(),
+        ),
       ),
     ),
   );
@@ -39,7 +45,7 @@ void main() {
 
     // Cảnh báo ngân sách.
     expect(find.text('Cảnh báo ngân sách'), findsOneWidget);
-    expect(find.text('87% mức trần'), findsOneWidget);
+    expect(find.text('34.80 USD đã dùng'), findsOneWidget);
 
     // Thẻ chỉ số nổi bật.
     expect(find.text('2.450.000'), findsOneWidget);

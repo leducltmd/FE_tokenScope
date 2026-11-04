@@ -7,7 +7,11 @@ import '../../core/widgets/ts_bottom_navigation.dart';
 import '../../core/widgets/ts_button.dart';
 import '../../core/widgets/ts_card.dart';
 import '../../core/widgets/ts_dialog.dart';
+import '../../core/widgets/ts_loading.dart';
 import '../../core/widgets/ts_logo.dart';
+import '../../core/widgets/ts_states.dart';
+import '../../models/budget_overview.dart';
+import '../../providers/budget_controller.dart';
 import 'widgets/budget_widgets.dart';
 
 /// Màn hình "Quản lý ngân sách AI".
@@ -16,28 +20,29 @@ import 'widgets/budget_widgets.dart';
 /// Thanh tiêu trình có vạch ngưỡng → Dự báo chi tiêu → Giới hạn rate-limit →
 /// Phân bổ theo nhà cung cấp / dự án → Điều chỉnh ngân sách & ngưỡng →
 /// Lịch sử chu kỳ thanh toán.
+///
+/// Toàn bộ số liệu đến từ backend thật (`GET /api/budgets`).
 class BudgetScreen extends StatefulWidget {
-  const BudgetScreen({super.key, this.onBack});
+  const BudgetScreen({super.key, this.onBack, this.controller});
 
   /// Quay lại màn hình trước (dùng khi mở dạng trang riêng).
   final VoidCallback? onBack;
+
+  /// Controller dùng chung — nếu null thì tự tạo.
+  final BudgetController? controller;
 
   @override
   State<BudgetScreen> createState() => _BudgetScreenState();
 }
 
 class _BudgetScreenState extends State<BudgetScreen> {
+  late final BudgetController _controller =
+      widget.controller ?? BudgetController();
+
   bool _autoRateLimit = true;
   int _allocationTab = 0;
 
-  static const _periods = [
-    'CHU KỲ: 01/10 - 31/10',
-    'CHU KỲ: 01/11 - 30/11',
-    'CHU KỲ: 01/12 - 31/12',
-  ];
-
-  static const _allocationTabs = ['Theo nhà cung cấp', 'Theo dự án (3)'];
-
+  static const _allocationTabs = ['Theo nhà cung cấp', 'Theo dự án'];
   static const _navItems = [
     TsNavItem(label: 'Tổng quan', icon: Icons.dashboard_rounded),
     TsNavItem(label: 'Lịch sử', icon: Icons.history_rounded),
@@ -45,64 +50,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
     TsNavItem(label: 'Cài đặt', icon: Icons.settings_rounded),
   ];
 
-  // ── Ngân sách tổng ───────────────────────────────────────────────────
-  static const _totalLimit = 40.0;
-  static const _threshold = 32.0;
-  static const _spent = 34.80;
+  /// Ngưỡng cảnh báo mặc định (%).
   static const _alertThreshold = 80.0;
 
-  static const _providers = [
-    BudgetProvider(
-      name: 'OpenAI API',
-      models: 'GPT-4o, o1-mini',
-      spent: 19.20,
-      limit: 22.00,
-      color: AppColors.emerald,
-    ),
-    BudgetProvider(
-      name: 'Anthropic Claude',
-      models: 'Claude 3.5 Sonnet',
-      spent: 8.20,
-      limit: 10.00,
-      color: Color(0xFF8B5CF6),
-    ),
-    BudgetProvider(
-      name: 'Google Gemini',
-      models: 'Gemini 1.5 Pro',
-      spent: 7.40,
-      limit: 8.00,
-      color: AppColors.azure,
-    ),
-  ];
+  /// Màu nhận diện theo loại nhà cung cấp.
+  static const _providerColors = <String, Color>{
+    'openai': AppColors.emerald,
+    'anthropic': AppColors.violet,
+    'google': AppColors.azure,
+    'mistral': AppColors.tangerine,
+    'groq': AppColors.grape,
+  };
 
-  static const _projects = [
-    BudgetProject(
-      name: 'Copilot Backend',
-      models: 'gpt-4o, claude-3-5-sonnet',
-      spent: 14.20,
-      limit: 16.00,
-      color: AppColors.primary,
-    ),
-    BudgetProject(
-      name: 'Marketing Agent',
-      models: 'gpt-4o-mini',
-      spent: 9.60,
-      limit: 12.00,
-      color: AppColors.tangerine,
-    ),
-    BudgetProject(
-      name: 'RAG Search',
-      models: 'gemini-1.5-pro',
-      spent: 11.00,
-      limit: 12.00,
-      color: AppColors.azure,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _controller.load();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final percent = _spent / _totalLimit * 100;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -110,32 +77,66 @@ class _BudgetScreenState extends State<BudgetScreen> {
         child: Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenPadding,
-                  AppSpacing.space8,
-                  AppSpacing.screenPadding,
-                  AppSpacing.space32,
-                ),
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: AppSpacing.space16),
-                  _buildTotalBudgetCard(percent),
-                  const SizedBox(height: AppSpacing.space12),
-                  _buildAlertBanner(),
-                  const SizedBox(height: AppSpacing.space16),
-                  _buildProgressSection(percent),
-                  const SizedBox(height: AppSpacing.space16),
-                  _buildForecastCard(),
-                  const SizedBox(height: AppSpacing.space12),
-                  _buildRateLimitCard(),
-                  const SizedBox(height: AppSpacing.space24),
-                  _buildAllocationSection(),
-                  const SizedBox(height: AppSpacing.space24),
-                  _buildAdjustCard(),
-                  const SizedBox(height: AppSpacing.space12),
-                  _buildBillingHistory(),
-                ],
+              child: ListenableBuilder(
+                listenable: _controller,
+                builder: (context, _) {
+                  if (_controller.isLoading && _controller.overview == null) {
+                    return const SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.screenPadding),
+                        child: Column(
+                          children: [
+                            TsSkeletonCard(height: 140),
+                            SizedBox(height: AppSpacing.space12),
+                            TsSkeletonCard(height: 170),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (_controller.hasError && _controller.overview == null) {
+                    return TsErrorState(
+                      title: 'Không thể tải ngân sách',
+                      message: _controller.errorMessage ??
+                          'Đã xảy ra lỗi khi kết nối máy chủ. Vui lòng thử lại.',
+                      actionLabel: 'Thử lại ngay',
+                      onRetry: () => _controller.load(),
+                    );
+                  }
+
+                  final overview = _controller.overview;
+                  if (overview == null) return const SizedBox.shrink();
+                  final percent = overview.percent;
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenPadding,
+                      AppSpacing.space8,
+                      AppSpacing.screenPadding,
+                      AppSpacing.space32,
+                    ),
+                    children: [
+                      _buildHeader(overview),
+                      const SizedBox(height: AppSpacing.space16),
+                      _buildTotalBudgetCard(overview, percent),
+                      const SizedBox(height: AppSpacing.space12),
+                      _buildAlertBanner(overview),
+                      const SizedBox(height: AppSpacing.space16),
+                      _buildProgressSection(overview, percent),
+                      const SizedBox(height: AppSpacing.space16),
+                      _buildForecastCard(overview),
+                      const SizedBox(height: AppSpacing.space12),
+                      _buildRateLimitCard(),
+                      const SizedBox(height: AppSpacing.space24),
+                      _buildAllocationSection(overview),
+                      const SizedBox(height: AppSpacing.space24),
+                      _buildAdjustCard(overview),
+                      const SizedBox(height: AppSpacing.space12),
+                      _buildBillingHistory(),
+                    ],
+                  );
+                },
               ),
             ),
             TsBottomNavigation(
@@ -156,7 +157,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   // ── Đầu trang ─────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  Widget _buildHeader(BudgetOverview overview) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -192,7 +193,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ),
         const SizedBox(height: AppSpacing.space12),
         BudgetPeriodChip(
-          label: _periods.first,
+          label: 'CHU KỲ: ${overview.periodLabel}',
           onTap: _showPeriodPicker,
         ),
         const SizedBox(height: AppSpacing.space12),
@@ -207,7 +208,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   // ── Thẻ hạn mức tổng ──────────────────────────────────────────────────
-  Widget _buildTotalBudgetCard(double percent) {
+  Widget _buildTotalBudgetCard(BudgetOverview overview, double percent) {
+    final spent = overview.spent;
+    final totalLimit = overview.totalLimit;
+
     return TsCard(
       padding: const EdgeInsets.all(AppSpacing.space16),
       child: Column(
@@ -230,13 +234,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '\$${_spent.toStringAsFixed(2)}',
+                          '\$${spent.toStringAsFixed(2)}',
                           style: AppTypography.h1.copyWith(fontSize: 26),
                         ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            '/ \$${_totalLimit.toStringAsFixed(2)}',
+                            '/ \$${totalLimit.toStringAsFixed(2)}',
                             style: AppTypography.bodySmall.copyWith(fontSize: 13),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -291,7 +295,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                'Còn lại \$${(_totalLimit - _spent).toStringAsFixed(2)}',
+                'Còn lại \$${overview.remaining.toStringAsFixed(2)}',
                 style: AppTypography.label.copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -306,24 +310,28 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   // ── Dải cảnh báo ──────────────────────────────────────────────────────
-  Widget _buildAlertBanner() {
+  Widget _buildAlertBanner(BudgetOverview overview) {
     return BudgetAlertBanner(
       title: 'CẢNH BÁO: Đã vượt ngưỡng an toàn '
           '${_alertThreshold.toStringAsFixed(0)}%',
       message:
-          '(\$${_threshold.toStringAsFixed(2)}). Tốc độ sử dụng cao!',
+          '(\$${overview.threshold.toStringAsFixed(2)}). Tốc độ sử dụng cao!',
       onTap: () => _scrollToAdjust(),
     );
   }
 
   // ── Thanh tiêu trình ──────────────────────────────────────────────────
-  Widget _buildProgressSection(double percent) {
+  Widget _buildProgressSection(BudgetOverview overview, double percent) {
+    final thresholdPercent = overview.totalLimit > 0
+        ? ((overview.threshold / overview.totalLimit) * 100).toDouble()
+        : 0.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         BudgetProgressBar(
           percent: percent,
-          thresholdPercent: _threshold / _totalLimit * 100,
+          thresholdPercent: thresholdPercent,
           height: 12,
           color: AppColors.primary,
         ),
@@ -337,7 +345,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
             ),
             Text(
-              'Ngưỡng: \$${_threshold.toStringAsFixed(2)}',
+              'Ngưỡng: \$${overview.threshold.toStringAsFixed(2)}',
               style: AppTypography.bodySmall.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -345,7 +353,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             const SizedBox(width: AppSpacing.space12),
             Text(
-              'Trần: \$${_totalLimit.toStringAsFixed(2)}',
+              'Trần: \$${overview.totalLimit.toStringAsFixed(2)}',
               style: AppTypography.bodySmall.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -358,7 +366,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   // ── Dự báo chi tiêu ───────────────────────────────────────────────────
-  Widget _buildForecastCard() {
+  Widget _buildForecastCard(BudgetOverview overview) {
+    final overage = overview.forecast - overview.totalLimit;
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+
     return TsCard(
       padding: const EdgeInsets.all(AppSpacing.space16),
       background: AppColors.softPurple,
@@ -395,8 +407,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
           const SizedBox(height: AppSpacing.space8),
           Text(
-            'Dự báo chạm mức \$41.20 vào ngày 31/10 với tốc độ gọi API '
-            'hiện nay (Nguy cơ thâm hụt \$1.20)',
+            overage > 0
+                ? 'Dự báo chạm mức \$${overview.forecast.toStringAsFixed(2)} '
+                    'vào ngày $daysInMonth/${now.month} với tốc độ gọi API '
+                    'hiện nay (Nguy cơ thâm hụt \$${overage.toStringAsFixed(2)})'
+                : 'Dự báo chi tiêu cuối tháng là \$${overview.forecast.toStringAsFixed(2)} '
+                    'với tốc độ gọi API hiện nay — vẫn nằm trong hạn mức.',
             style: AppTypography.bodySmall.copyWith(
               fontSize: 12.5,
               color: AppColors.secondaryText,
@@ -419,36 +435,56 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   // ── Phân bổ ngân sách ────────────────────────────────────────────────
-  Widget _buildAllocationSection() {
+  Widget _buildAllocationSection(BudgetOverview overview) {
     final isProvider = _allocationTab == 0;
+    final tabs = [
+      _allocationTabs[0],
+      '${_allocationTabs[1]} (${overview.projects.length})',
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            for (var i = 0; i < _allocationTabs.length; i++) ...[
+            for (var i = 0; i < tabs.length; i++) ...[
               Expanded(
                 child: _AllocationTab(
-                  label: _allocationTabs[i],
+                  label: tabs[i],
                   isSelected: i == _allocationTab,
                   onTap: () => setState(() => _allocationTab = i),
                 ),
               ),
-              if (i != _allocationTabs.length - 1)
+              if (i != tabs.length - 1)
                 const SizedBox(width: AppSpacing.space8),
             ],
           ],
         ),
         const SizedBox(height: AppSpacing.space12),
         if (isProvider)
-          for (final provider in _providers) ...[
-            BudgetProviderCard(provider: provider),
+          for (final provider in overview.providers) ...[
+            BudgetProviderCard(
+              provider: BudgetProvider(
+                name: provider.name,
+                models: provider.models,
+                spent: provider.spent,
+                limit: provider.limit,
+                color: _providerColors[provider.providerType] ?? AppColors.primary,
+              ),
+            ),
             const SizedBox(height: AppSpacing.space12),
           ]
         else
-          for (final project in _projects) ...[
-            BudgetProjectCard(project: project),
+          for (final project in overview.projects) ...[
+            BudgetProjectCard(
+              project: BudgetProject(
+                name: project.name,
+                models: project.models,
+                spent: project.spent,
+                limit: project.limit,
+                color: AppColors.primary,
+              ),
+            ),
             const SizedBox(height: AppSpacing.space12),
           ],
       ],
@@ -456,7 +492,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   // ── Điều chỉnh ngân sách & ngưỡng cảnh báo ────────────────────────────
-  Widget _buildAdjustCard() {
+  Widget _buildAdjustCard(BudgetOverview overview) {
     return TsCard(
       padding: const EdgeInsets.all(AppSpacing.space16),
       child: Column(
@@ -490,7 +526,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               Expanded(
                 child: _MiniStat(
                   label: 'Hạn mức',
-                  value: '\$${_totalLimit.toStringAsFixed(2)}',
+                  value: '\$${overview.totalLimit.toStringAsFixed(2)}',
                   color: AppColors.navy,
                 ),
               ),
@@ -561,6 +597,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   void _showPeriodPicker() {
+    final overview = _controller.overview;
+    final periods = [
+      if (overview != null) 'CHU KỲ: ${overview.periodLabel}',
+    ];
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -576,20 +617,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
             children: [
               Text('Chọn chu kỳ tính toán', style: AppTypography.h3),
               const SizedBox(height: AppSpacing.space12),
-              for (final period in _periods)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.calendar_month_rounded,
-                    size: 20,
-                    color: AppColors.primary,
+              if (periods.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Chưa có dữ liệu ngân sách.',
+                    style: AppTypography.bodySmall.copyWith(fontSize: 12.5),
                   ),
-                  title: Text(period, style: AppTypography.label),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _showInfo('Chu kỳ', period);
-                  },
-                ),
+                )
+              else
+                for (final period in periods)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.calendar_month_rounded,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    title: Text(period, style: AppTypography.label),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _showInfo('Chu kỳ', period);
+                    },
+                  ),
             ],
           ),
         ),
@@ -604,11 +654,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<void> _confirmSaveBudget() async {
+    final overview = _controller.overview;
+    final totalLimit = overview?.totalLimit ?? 0;
+
     final confirmed = await TsDialog.show(
       context,
       title: 'Lưu ngân sách mới?',
       message:
-          'Hạn mức tháng này sẽ được đặt thành \$${_totalLimit.toStringAsFixed(2)} '
+          'Hạn mức tháng này sẽ được đặt thành \$${totalLimit.toStringAsFixed(2)} '
           'USD. Bạn sẽ nhận cảnh báo khi sử dụng đến '
           '${_alertThreshold.toStringAsFixed(0)}%.',
       confirmLabel: 'Lưu ngân sách',

@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tokenscope/app.dart';
+import 'package:tokenscope/providers/auth_controller.dart';
+
+import 'helpers/mock_auth_service.dart';
 
 /// Dùng mock service để test không phụ thuộc backend.
-const testApp = TokenScopeApp(useMockService: true);
+final testApp = TokenScopeApp(
+  authController: AuthController(service: MockAuthService()),
+);
 
 void main() {
   testWidgets('Hiển thị màn hình đăng nhập với nội dung chuẩn', (

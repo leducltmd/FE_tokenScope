@@ -50,9 +50,28 @@ class UsageRecord {
   final Map<String, String>? requestHeaders;
   final String? apiEndpoint;
 
+  /// Định dạng giờ — `10:42:15`.
+  static String _formatTime(DateTime value) {
+    final hh = value.hour.toString().padLeft(2, '0');
+    final mm = value.minute.toString().padLeft(2, '0');
+    final ss = value.second.toString().padLeft(2, '0');
+    return '$hh:$mm:$ss';
+  }
+
+  /// Định dạng ngày — `Hôm nay (15/10)` hoặc `15/10/2026`.
+  static String _formatDate(DateTime value) {
+    final now = DateTime.now();
+    final dd = value.day.toString().padLeft(2, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    final isToday =
+        value.year == now.year && value.month == now.month && value.day == now.day;
+    if (isToday) return 'Hôm nay ($dd/$mm)';
+    if (value.year == now.year) return '$dd/$mm';
+    return '$dd/$mm/${value.year}';
+  }
+
   /// Định dạng số nguyên với dấu chấm ngăn cách hàng nghìn (chuẩn Việt Nam: 1.420).
-  static String formatNumber(int number) {
-    final str = number.toString();
+  static String formatNumber(int number) {    final str = number.toString();
     final buffer = StringBuffer();
     final len = str.length;
     for (var i = 0; i < len; i++) {
@@ -83,6 +102,16 @@ class UsageRecord {
 
   /// Khởi tạo từ JSON (hỗ trợ chuyển sang API backend sau này).
   factory UsageRecord.fromJson(Map<String, dynamic> json) {
+    final timestamp = json['timestamp'] != null
+        ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+        : DateTime.now();
+
+    // Backend không gửi `timeDisplay`/`dateDisplay` — tự suy ra từ timestamp.
+    final timeDisplay =
+        json['timeDisplay'] as String? ?? _formatTime(timestamp);
+    final dateDisplay =
+        json['dateDisplay'] as String? ?? _formatDate(timestamp);
+
     return UsageRecord(
       id: json['id'] as String? ?? '',
       promptId: json['promptId'] as String? ?? '',
@@ -90,11 +119,9 @@ class UsageRecord {
       model: json['model'] as String? ?? '',
       project: json['project'] as String? ?? 'General',
       projectIconType: json['projectIconType'] as String? ?? 'folder',
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
-          : DateTime.now(),
-      timeDisplay: json['timeDisplay'] as String? ?? '',
-      dateDisplay: json['dateDisplay'] as String? ?? '',
+      timestamp: timestamp,
+      timeDisplay: timeDisplay,
+      dateDisplay: dateDisplay,
       inputTokens: (json['inputTokens'] as num?)?.toInt() ?? 0,
       outputTokens: (json['outputTokens'] as num?)?.toInt() ?? 0,
       totalTokens: (json['totalTokens'] as num?)?.toInt() ?? 0,

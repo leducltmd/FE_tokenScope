@@ -6,8 +6,8 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/ts_text_field.dart';
 import '../../providers/auth_controller.dart';
+import '../../services/api_auth_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/mock_auth_service.dart';
 import 'auth_header.dart';
 import 'auth_status_banner.dart';
 
@@ -31,7 +31,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   late final AuthController _controller =
       widget.controller ??
-      AuthController(service: widget.authService ?? MockAuthService());
+      AuthController(service: widget.authService ?? ApiAuthService());
 
   final _emailController = TextEditingController();
 

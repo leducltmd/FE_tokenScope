@@ -1,14 +1,16 @@
 import 'package:flutter/foundation.dart';
 
+import '../services/api_auth_service.dart';
+import '../services/api_session.dart';
 import '../services/auth_service.dart';
-import '../services/mock_auth_service.dart';
 
 enum AuthStatus { unknown, authenticating, authenticated, unauthenticated }
 
 /// Quản lý trạng thái xác thực của ứng dụng.
 class AuthController extends ChangeNotifier {
+  /// Mặc định dùng [ApiAuthService] — dữ liệu thật từ backend TokenScope.
   AuthController({AuthService? service})
-    : _service = service ?? MockAuthService();
+    : _service = service ?? ApiAuthService();
 
   AuthService _service;
 
@@ -86,6 +88,7 @@ class AuthController extends ChangeNotifier {
     _user = null;
     _status = AuthStatus.unauthenticated;
     _error = null;
+    ApiSession.instance.clear();
     notifyListeners();
   }
 
@@ -97,6 +100,7 @@ class AuthController extends ChangeNotifier {
       _error = null;
       _errorCode = null;
       _status = AuthStatus.authenticated;
+      ApiSession.instance.setAccessToken(result.token);
     } else {
       _token = null;
       _refreshToken = null;
@@ -104,6 +108,7 @@ class AuthController extends ChangeNotifier {
       _error = result.error;
       _errorCode = result.code;
       _status = AuthStatus.unauthenticated;
+      ApiSession.instance.clear();
     }
     notifyListeners();
     return result.isSuccess;

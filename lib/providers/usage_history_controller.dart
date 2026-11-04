@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/usage_record.dart';
+import '../services/api_usage_history_service.dart';
 import '../services/usage_history_service.dart';
 
 /// ViewModel/Controller quản lý trạng thái của màn hình Lịch sử sử dụng (Usage History).
 /// Tuân thủ mô hình MVVM của TokenScope: tách biệt logic và trạng thái khỏi giao diện UI.
 class UsageHistoryController extends ChangeNotifier {
   UsageHistoryController({UsageHistoryService? service})
-      : _service = service ?? MockUsageHistoryService();
+    : _service = service ?? ApiUsageHistoryService();
 
   UsageHistoryService _service;
 

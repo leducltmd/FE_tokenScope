@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tokenscope/app.dart';
+import 'package:tokenscope/providers/auth_controller.dart';
 
 import 'helpers/font_loader.dart';
-
-/// Dùng mock service để test không phụ thuộc backend.
-const testApp = TokenScopeApp(useMockService: true);
+import 'helpers/fake_services.dart';
+import 'helpers/mock_auth_service.dart';
 
 /// Sinh ảnh giao diện ở kích thước màn hình điện thoại để kiểm tra thị giác.
 void main() {
@@ -18,7 +18,13 @@ void main() {
     tester.view.physicalSize = surfaceSize * 2;
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(
+      TokenScopeApp(
+        authController: AuthController(service: MockAuthService()),
+        dashboardController: buildFakeDashboardController(),
+        historyController: buildFakeHistoryController(),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
