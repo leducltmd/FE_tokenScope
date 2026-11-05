@@ -127,14 +127,15 @@ class AuthController extends ChangeNotifier {
       _errorCode = null;
       _status = AuthStatus.authenticated;
 
-      // QUAN TRỌNG:
-      // Không tự cho phép truy cập các API Backend chỉ dựa trên trạng thái Firebase.
-      // Chỉ gán token cho ApiSession nếu là TokenScope JWT từ Backend Node.js.
-      if (_user?.authProvider == 'google') {
-        // Firebase ID Token cần bước hoán đổi (Exchange) trên Backend để nhận JWT thật.
-        ApiSession.instance.clear();
-      } else {
+      // Gán token cho ApiSession nếu là TokenScope JWT từ Backend Node.js.
+      // Khi đăng nhập Google đã hoán đổi thành công với Backend (có refreshToken hoặc Backend JWT),
+      // gán token vào ApiSession để có toàn quyền gọi các API backend.
+      if (result.token != null &&
+          result.token!.isNotEmpty &&
+          (_user?.authProvider != 'google' || result.refreshToken != null)) {
         ApiSession.instance.setAccessToken(result.token);
+      } else {
+        ApiSession.instance.clear();
       }
     } else {
       _token = null;

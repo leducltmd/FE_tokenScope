@@ -45,8 +45,8 @@ class ApiConfig {
 
   /// Ứng viên trên Android — xếp theo thứ tự ưu tiên thực tế.
   static const List<String> _androidHosts = <String>[
-    '10.0.3.2',
     '10.0.2.2',
+    '10.0.3.2',
     '127.0.0.1',
     'localhost',
   ];

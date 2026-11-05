@@ -11,7 +11,9 @@ export 'api_config.dart' show ApiConfig;
 /// Nguồn dữ liệu xác thực chính của TokenScope.
 ///
 /// - Đăng nhập/Đăng ký email & mật khẩu: Gọi Backend Node.js.
-/// - Đăng nhập với Google: Ủy quyền cho [FirebaseAuthService] kết nối Firebase Auth thật.
+/// - Đăng nhập với Google: Xác thực qua Firebase Auth, sau đó trao đổi ID Token
+///   với Backend Node.js (`POST /auth/google`) để lấy JWT của TokenScope và
+///   đồng bộ người dùng vào cơ sở dữ liệu.
 class ApiAuthService implements AuthService {
   ApiAuthService({
     ApiConfig? config,
@@ -58,8 +60,47 @@ class ApiAuthService implements AuthService {
   }
 
   @override
-  Future<AuthResult> signInWithGoogle() {
-    return _firebaseAuth.signInWithGoogle();
+  Future<AuthResult> signInWithGoogle() async {
+    // 1. Xác thực Google với Firebase Authentication
+    final firebaseResult = await _firebaseAuth.signInWithGoogle();
+    if (!firebaseResult.isSuccess || firebaseResult.isCancelled) {
+      return firebaseResult;
+    }
+
+    // 2. Trao đổi ID Token với Backend Node.js để nhận Backend JWT
+    final idToken = firebaseResult.token;
+    if (idToken != null && idToken.isNotEmpty) {
+      try {
+        final backendResult =
+            await _post('/auth/google', {'idToken': idToken});
+        if (backendResult.isSuccess) {
+          final user = backendResult.user;
+          final googleUser = user is AuthUser
+              ? AuthUser(
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  birthDate: user.birthDate,
+                  avatarUrl: user.avatarUrl ??
+                      (firebaseResult.user as AuthUser?)?.avatarUrl,
+                  authProvider: 'google',
+                )
+              : user;
+
+          return AuthResult.success(
+            token: backendResult.token,
+            refreshToken: backendResult.refreshToken,
+            user: googleUser,
+          );
+        } else {
+          return backendResult;
+        }
+      } catch (e) {
+        // Nếu Backend chưa chạy hoặc lỗi mạng, trả về kết quả Firebase
+      }
+    }
+
+    return firebaseResult;
   }
 
   @override
