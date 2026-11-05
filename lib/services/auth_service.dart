@@ -18,6 +18,15 @@ class AuthResult {
       refreshToken = null,
       user = null;
 
+  /// Kết quả khi người dùng tự hủy chọn tài khoản Google (nhấn Back / Cancel).
+  const AuthResult.cancelled({
+    this.error = 'Đã hủy chọn tài khoản Google.',
+  }) : token = null,
+      refreshToken = null,
+      user = null,
+      code = 'CANCELLED',
+      statusCode = null;
+
   final String? token;
   final String? refreshToken;
   final dynamic user;
@@ -26,6 +35,9 @@ class AuthResult {
   final int? statusCode;
 
   bool get isSuccess => error == null;
+
+  /// Người dùng chủ động hủy thao tác đăng nhập.
+  bool get isCancelled => code == 'CANCELLED';
 
   /// Lỗi do người dùng nhập sai (email đã tồn tại, mật khẩu yếu...)
   bool get isValidationError => statusCode == 400 || statusCode == 409;
@@ -42,6 +54,7 @@ class AuthUser {
     this.name,
     this.birthDate,
     this.avatarUrl,
+    this.authProvider = 'password',
   });
 
   final String? id;
@@ -51,6 +64,9 @@ class AuthUser {
   /// Ngày sinh ở định dạng YYYY-MM-DD.
   final String? birthDate;
   final String? avatarUrl;
+
+  /// Phương thức xác thực: 'password' (Backend) hoặc 'google' (Firebase).
+  final String? authProvider;
 
   /// Tên hiển thị — ưu tiên tên đầy đủ, fallback sang email.
   String get displayName {
@@ -84,6 +100,7 @@ class AuthUser {
       name: json['name'] as String?,
       birthDate: rawDate == null ? null : _formatDate(rawDate),
       avatarUrl: json['avatarUrl'] as String?,
+      authProvider: json['authProvider'] as String? ?? 'password',
     );
   }
 
@@ -99,8 +116,9 @@ class AuthUser {
 
 /// Lớp trừu tượng cho nguồn dữ liệu xác thực.
 ///
-/// Mặc định ứng dụng dùng [ApiAuthService] (backend thật).
-/// [MockAuthService] chỉ còn lại để chạy giao diện độc lập trong test.
+/// Mặc định ứng dụng dùng [ApiAuthService] (backend thật) kết hợp
+/// [FirebaseAuthService] cho đăng nhập Google qua Firebase.
+/// [MockAuthService] chỉ dùng để chạy giao diện độc lập trong unit/widget test.
 abstract class AuthService {
   Future<AuthResult> login({
     required String email,
@@ -115,6 +133,12 @@ abstract class AuthService {
   });
 
   Future<AuthResult> forgotPassword(String email);
+
+  /// Đăng nhập bằng Google thông qua Firebase Authentication.
+  Future<AuthResult> signInWithGoogle();
+
+  /// Khôi phục phiên đăng nhập trước đó (nếu còn hiệu lực).
+  Future<AuthResult?> restoreSession();
 
   Future<void> logout();
 }

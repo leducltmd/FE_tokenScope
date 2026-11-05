@@ -22,7 +22,7 @@ class TokenScopeApp extends StatelessWidget {
 
   final AuthController? authController;
 
-  /// Controller tổ quan dùng cho màn hình tổng quan (null → gọi backend thật).
+  /// Controller tổng quan dùng cho màn hình tổng quan (null → gọi backend thật).
   final DashboardController? dashboardController;
 
   /// Controller lịch sử dùng cho mục truy vấn gần nhất (null → gọi backend thật).
@@ -62,7 +62,20 @@ class _AuthFlow extends StatefulWidget {
 }
 
 class _AuthFlowState extends State<_AuthFlow> {
-  AuthPage _page = AuthPage.login;
+  late AuthPage _page =
+      widget.controller.isAuthenticated ? AuthPage.dashboard : AuthPage.login;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.controller.isAuthenticated) {
+      widget.controller.restoreSession().then((restored) {
+        if (restored && mounted) {
+          setState(() => _page = AuthPage.dashboard);
+        }
+      });
+    }
+  }
 
   void _go(AuthPage page) => setState(() => _page = page);
 

@@ -6,9 +6,15 @@ import 'package:tokenscope/services/auth_service.dart';
 ///
 /// Mật khẩu hợp lệ: `123456`.
 class MockAuthService implements AuthService {
-  MockAuthService({this.simulateDelay = const Duration(milliseconds: 900)});
+  MockAuthService({
+    this.simulateDelay = const Duration(milliseconds: 900),
+    this.shouldCancelGoogle = false,
+    this.googleError,
+  });
 
   final Duration simulateDelay;
+  final bool shouldCancelGoogle;
+  final String? googleError;
   final Random _random = Random();
 
   @override
@@ -52,6 +58,32 @@ class MockAuthService implements AuthService {
   Future<AuthResult> forgotPassword(String email) async {
     await Future<void>.delayed(simulateDelay);
     return AuthResult.success(token: 'mock_reset_${_random.nextInt(99999)}');
+  }
+
+  @override
+  Future<AuthResult> signInWithGoogle() async {
+    await Future<void>.delayed(simulateDelay);
+    if (shouldCancelGoogle) {
+      return const AuthResult.cancelled();
+    }
+    if (googleError != null) {
+      return AuthResult.failure(googleError!, code: 'GOOGLE_ERROR');
+    }
+    return AuthResult.success(
+      token: 'mock_google_id_token_${_random.nextInt(99999)}',
+      user: const AuthUser(
+        id: 'google_uid_123',
+        email: 'google.user@gmail.com',
+        name: 'Google User',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/mock',
+        authProvider: 'google',
+      ),
+    );
+  }
+
+  @override
+  Future<AuthResult?> restoreSession() async {
+    return null;
   }
 
   @override

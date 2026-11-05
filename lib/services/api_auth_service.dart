@@ -3,19 +3,28 @@ import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
+import 'firebase_auth_service.dart';
 
 export 'api_client.dart' show ApiException;
 export 'api_config.dart' show ApiConfig;
 
-/// Nguồn dữ liệu xác thực gọi trực tiếp backend TokenScope.
+/// Nguồn dữ liệu xác thực chính của TokenScope.
 ///
-/// Dùng `package:http` để chạy được trên cả web, Android và desktop —
-/// `dart:io` không dùng được trên Flutter web.
+/// - Đăng nhập/Đăng ký email & mật khẩu: Gọi Backend Node.js.
+/// - Đăng nhập với Google: Ủy quyền cho [FirebaseAuthService] kết nối Firebase Auth thật.
 class ApiAuthService implements AuthService {
-  ApiAuthService({ApiConfig? config, http.Client? client})
-    : _client = ApiClient(config: config, client: client);
+  ApiAuthService({
+    ApiConfig? config,
+    http.Client? client,
+    FirebaseAuthService? firebaseAuthService,
+  })  : _client = ApiClient(config: config, client: client),
+        _customFirebaseAuth = firebaseAuthService;
 
   final ApiClient _client;
+  final FirebaseAuthService? _customFirebaseAuth;
+
+  FirebaseAuthService get _firebaseAuth =>
+      _customFirebaseAuth ?? FirebaseAuthService();
 
   /// URL đang hoạt động — cập nhật sau khi tìm được host kết nối được.
   String get baseUrl => _client.baseUrl;
@@ -49,8 +58,20 @@ class ApiAuthService implements AuthService {
   }
 
   @override
+  Future<AuthResult> signInWithGoogle() {
+    return _firebaseAuth.signInWithGoogle();
+  }
+
+  @override
+  Future<AuthResult?> restoreSession() {
+    return _firebaseAuth.restoreSession();
+  }
+
+  @override
   Future<void> logout() async {
-    // Backend thu hồi phiên qua endpoint /auth/logout (cần refreshToken).
+    // Thu hồi phiên Firebase & Google
+    await _firebaseAuth.logout();
+    // Backend thu hồi phiên qua endpoint /auth/logout (nếu có refreshToken)
   }
 
   void dispose() => _client.dispose();

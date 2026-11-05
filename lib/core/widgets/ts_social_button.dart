@@ -11,18 +11,20 @@ class TsSocialButton extends StatelessWidget {
     required this.label,
     required this.icon,
     this.onPressed,
+    this.isLoading = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 52,
       child: OutlinedButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.navy,
@@ -39,12 +41,22 @@ class TsSocialButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20, color: AppColors.navy),
+            if (isLoading)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.navy),
+                ),
+              )
+            else
+              Icon(icon, size: 20, color: AppColors.navy),
             const SizedBox(width: AppSpacing.space8),
             // Nhãn co giãn được để không tràn khi màn hình hẹp.
             Flexible(
               child: Text(
-                label,
+                isLoading ? 'Đang xử lý...' : label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

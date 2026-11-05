@@ -8,7 +8,7 @@ enum AuthStatus { unknown, authenticating, authenticated, unauthenticated }
 
 /// Quản lý trạng thái xác thực của ứng dụng.
 class AuthController extends ChangeNotifier {
-  /// Mặc định dùng [ApiAuthService] — dữ liệu thật từ backend TokenScope.
+  /// Mặc định dùng [ApiAuthService] kết hợp Firebase cho Google Sign-In.
   AuthController({AuthService? service})
     : _service = service ?? ApiAuthService();
 
@@ -31,14 +31,13 @@ class AuthController extends ChangeNotifier {
   /// Thông tin người dùng hiện tại (có thể null trước khi đăng nhập).
   AuthUser? get user => _user;
 
-  /// Tên hiển thị trên dashboard — lấy từ họ tên người dùng đăng ký.
+  /// Tên hiển thị trên dashboard — lấy từ họ tên người dùng.
   String get displayName => _user?.displayName ?? 'Minh Anh';
 
   /// Tên gọi thân mật — tên đệm + tên (hai từ cuối của họ tên).
   String get shortName => _user?.shortName ?? displayName;
 
-  /// Thay nguồn dữ liệu — dùng khi backend sẵn sàng
-  /// (`AuthController(service: ApiAuthService())`).
+  /// Thay nguồn dữ liệu — dùng khi chạy test hoặc thay đổi môi trường.
   void useService(AuthService service) {
     _service = service;
   }
@@ -81,6 +80,33 @@ class AuthController extends ChangeNotifier {
     return result.isSuccess;
   }
 
+  /// Đăng nhập bằng Google qua Firebase Authentication thật.
+  Future<bool> signInWithGoogle() async {
+    _set(AuthStatus.authenticating);
+    final result = await _service.signInWithGoogle();
+
+    if (result.isCancelled) {
+      // Người dùng tự hủy chọn tài khoản Google (nhấn Back/Cancel):
+      // Không xem là lỗi nghiêm trọng, êm dịu phục hồi trạng thái.
+      _status = _user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated;
+      _error = null;
+      _errorCode = null;
+      notifyListeners();
+      return false;
+    }
+
+    return _apply(result);
+  }
+
+  /// Khôi phục phiên đăng nhập (Firebase hoặc token đã lưu).
+  Future<bool> restoreSession() async {
+    final result = await _service.restoreSession();
+    if (result != null && result.isSuccess) {
+      return _apply(result);
+    }
+    return false;
+  }
+
   Future<void> logout() async {
     await _service.logout();
     _token = null;
@@ -100,7 +126,16 @@ class AuthController extends ChangeNotifier {
       _error = null;
       _errorCode = null;
       _status = AuthStatus.authenticated;
-      ApiSession.instance.setAccessToken(result.token);
+
+      // QUAN TRỌNG:
+      // Không tự cho phép truy cập các API Backend chỉ dựa trên trạng thái Firebase.
+      // Chỉ gán token cho ApiSession nếu là TokenScope JWT từ Backend Node.js.
+      if (_user?.authProvider == 'google') {
+        // Firebase ID Token cần bước hoán đổi (Exchange) trên Backend để nhận JWT thật.
+        ApiSession.instance.clear();
+      } else {
+        ApiSession.instance.setAccessToken(result.token);
+      }
     } else {
       _token = null;
       _refreshToken = null;

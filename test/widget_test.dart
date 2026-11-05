@@ -6,16 +6,16 @@ import 'package:tokenscope/providers/auth_controller.dart';
 
 import 'helpers/mock_auth_service.dart';
 
-/// Dùng mock service để test không phụ thuộc backend.
-final testApp = TokenScopeApp(
-  authController: AuthController(service: MockAuthService()),
+/// Tạo app mới với mock service cho mỗi bài test.
+Widget createTestApp({MockAuthService? service}) => TokenScopeApp(
+  authController: AuthController(service: service ?? MockAuthService()),
 );
 
 void main() {
   testWidgets('Hiển thị màn hình đăng nhập với nội dung chuẩn', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     expect(find.text('Chào mừng trở lại'), findsOneWidget);
     expect(find.text('Đăng nhập'), findsWidgets);
@@ -26,7 +26,7 @@ void main() {
   });
 
   testWidgets('Chuyển sang màn hình đăng ký', (WidgetTester tester) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     await tester.ensureVisible(find.text('Đăng ký'));
     await tester.pumpAndSettle();
@@ -39,7 +39,7 @@ void main() {
   });
 
   testWidgets('Chuyển sang màn hình quên mật khẩu', (WidgetTester tester) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     await tester.ensureVisible(find.text('Quên mật khẩu?'));
     await tester.pumpAndSettle();
@@ -53,7 +53,7 @@ void main() {
   testWidgets('Đăng nhập thành công chuyển tới màn hình tổng quan', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     final fields = find.byType(TextField);
     await tester.enterText(fields.at(0), 'demo@tokenscope.io');
@@ -81,7 +81,7 @@ void main() {
   testWidgets('Đăng nhập sai mật khẩu hiển thị thông báo lỗi', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     final fields = find.byType(TextField);
     await tester.enterText(fields.at(0), 'demo@tokenscope.io');
@@ -95,10 +95,56 @@ void main() {
     expect(find.text('Email hoặc mật khẩu không đúng.'), findsOneWidget);
   });
 
+  testWidgets('Đăng nhập bằng Google thành công chuyển tới màn hình tổng quan', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createTestApp());
+
+    await tester.ensureVisible(find.text('Tiếp tục với Google'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tiếp tục với Google'));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    expect(find.text('Xin chào, Google User'), findsOneWidget);
+    expect(find.text('Tổng token tháng này'), findsOneWidget);
+  });
+
+  testWidgets('Người dùng hủy chọn Google không hiển thị banner lỗi', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createTestApp(
+      service: MockAuthService(shouldCancelGoogle: true),
+    ));
+
+    await tester.ensureVisible(find.text('Tiếp tục với Google'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tiếp tục với Google'));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    // Vẫn ở màn hình đăng nhập và không có thông báo lỗi
+    expect(find.text('Chào mừng trở lại'), findsOneWidget);
+    expect(find.text('Đã hủy chọn tài khoản Google.'), findsNothing);
+  });
+
+  testWidgets('Đăng nhập Google thất bại hiển thị thông báo lỗi', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createTestApp(
+      service: MockAuthService(googleError: 'Không có kết nối mạng.'),
+    ));
+
+    await tester.ensureVisible(find.text('Tiếp tục với Google'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tiếp tục với Google'));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    expect(find.text('Không có kết nối mạng.'), findsOneWidget);
+  });
+
   testWidgets('Đăng ký báo lỗi khi mật khẩu không khớp', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     await tester.ensureVisible(find.text('Đăng ký'));
     await tester.pumpAndSettle();
@@ -121,7 +167,7 @@ void main() {
   testWidgets('Đăng ký báo lỗi khi chưa chọn ngày sinh', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     await tester.ensureVisible(find.text('Đăng ký'));
     await tester.pumpAndSettle();
@@ -144,7 +190,7 @@ void main() {
   testWidgets('Màn hình đăng ký có trường ngày sinh', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(testApp);
+    await tester.pumpWidget(createTestApp());
 
     await tester.ensureVisible(find.text('Đăng ký'));
     await tester.pumpAndSettle();

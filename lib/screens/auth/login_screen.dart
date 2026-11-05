@@ -46,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _rememberMe = true;
   String? _errorMessage;
 
@@ -79,8 +80,31 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _errorMessage = null;
+      _isGoogleLoading = true;
+    });
+
+    final success = await _controller.signInWithGoogle();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isGoogleLoading = false;
+      // Nếu người dùng hủy chọn tài khoản, error sẽ là null nên không hiện banner lỗi
+      _errorMessage = success ? null : _controller.error;
+    });
+
+    if (success) {
+      widget.onAuthenticated?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isBusy = _isLoading || _isGoogleLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -129,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passwordController,
                         obscureText: true,
                         textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _handleLogin(),
+                        onSubmitted: (_) => isBusy ? null : _handleLogin(),
                       ),
                       const SizedBox(height: AppSpacing.space16),
                       Row(
@@ -138,11 +162,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: TsCheckbox(
                               value: _rememberMe,
                               label: 'Ghi nhớ đăng nhập',
-                              onChanged: (v) => setState(() => _rememberMe = v),
+                              onChanged: isBusy ? null : (v) => setState(() => _rememberMe = v),
                             ),
                           ),
                           TextButton(
-                            onPressed: widget.onForgotPasswordTap,
+                            onPressed: isBusy ? null : widget.onForgotPasswordTap,
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: const Size(0, 0),
@@ -164,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         label: 'Đăng nhập',
                         icon: Icons.login_rounded,
                         isLoading: _isLoading,
-                        onPressed: _handleLogin,
+                        onPressed: isBusy ? null : _handleLogin,
                       ),
                       const SizedBox(height: AppSpacing.space24),
                       const TsOrDivider(),
@@ -172,13 +196,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       TsSocialButton(
                         label: 'Tiếp tục với Google',
                         icon: Icons.g_mobiledata_rounded,
-                        onPressed: _isLoading ? null : () {},
+                        isLoading: _isGoogleLoading,
+                        onPressed: isBusy ? null : _handleGoogleLogin,
                       ),
                       const SizedBox(height: AppSpacing.space12),
                       TsSocialButton(
                         label: 'Tiếp tục với GitHub',
                         icon: Icons.code_rounded,
-                        onPressed: _isLoading ? null : () {},
+                        onPressed: isBusy ? null : () {},
                       ),
                       const SizedBox(height: AppSpacing.space32),
                       Row(
@@ -193,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(width: AppSpacing.space4),
                           GestureDetector(
-                            onTap: widget.onRegisterTap,
+                            onTap: isBusy ? null : widget.onRegisterTap,
                             child: Text(
                               'Đăng ký',
                               style: AppTypography.label.copyWith(
