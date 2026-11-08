@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -17,9 +18,9 @@ class FirebaseAuthService implements AuthService {
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
     String? serverClientId,
-  })  : _customAuth = auth,
-        _customGoogleSignIn = googleSignIn,
-        _serverClientId = serverClientId ?? _defaultWebClientId;
+  }) : _customAuth = auth,
+       _customGoogleSignIn = googleSignIn,
+       _serverClientId = serverClientId ?? _defaultWebClientId;
 
   /// Web Client ID từ google-services.json (client_type = 3).
   /// Cần thiết trên Android để Google cấp idToken cho Firebase và Backend.
@@ -31,9 +32,32 @@ class FirebaseAuthService implements AuthService {
   final String _serverClientId;
 
   FirebaseAuth get _auth => _customAuth ?? FirebaseAuth.instance;
-  GoogleSignIn get _googleSignIn => _customGoogleSignIn ?? GoogleSignIn.instance;
+  GoogleSignIn get _googleSignIn =>
+      _customGoogleSignIn ?? GoogleSignIn.instance;
+
+  bool get _hasFirebaseAuth =>
+      _customAuth != null || (!kIsWeb && Firebase.apps.isNotEmpty);
 
   static bool _initialized = false;
+
+  @override
+  Stream<AuthResult?> get authStateChanges {
+    if (!_hasFirebaseAuth) return const Stream<AuthResult?>.empty();
+    return _auth.authStateChanges().asyncMap((user) async {
+      if (user == null) return null;
+      final token = await user.getIdToken();
+      return AuthResult.success(
+        token: token,
+        user: AuthUser(
+          id: user.uid,
+          email: user.email,
+          name: user.displayName,
+          avatarUrl: user.photoURL,
+          authProvider: 'google',
+        ),
+      );
+    });
+  }
 
   /// Khởi tạo GoogleSignIn đúng một lần duy nhất.
   static Future<void> ensureInitialized({String? serverClientId}) async {
@@ -79,8 +103,9 @@ class FirebaseAuthService implements AuthService {
       );
 
       // Đăng nhập vào Firebase Authentication thật
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       final User? firebaseUser = userCredential.user;
 
       if (firebaseUser == null) {
@@ -100,10 +125,7 @@ class FirebaseAuthService implements AuthService {
         authProvider: 'google',
       );
 
-      return AuthResult.success(
-        token: firebaseIdToken,
-        user: authUser,
-      );
+      return AuthResult.success(token: firebaseIdToken, user: authUser);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         return const AuthResult.cancelled();
@@ -113,10 +135,7 @@ class FirebaseAuthService implements AuthService {
         code: 'GOOGLE_SIGN_IN_ERROR',
       );
     } on FirebaseAuthException catch (e) {
-      return AuthResult.failure(
-        _formatFirebaseAuthError(e),
-        code: e.code,
-      );
+      return AuthResult.failure(_formatFirebaseAuthError(e), code: e.code);
     } catch (e) {
       return AuthResult.failure(
         'Đăng nhập Google thất bại: $e',
@@ -127,7 +146,7 @@ class FirebaseAuthService implements AuthService {
 
   @override
   Future<AuthResult?> restoreSession() async {
-    if (kIsWeb) return null;
+    if (!_hasFirebaseAuth) return null;
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
@@ -159,10 +178,7 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
-  Future<AuthResult> login({
-    required String email,
-    required String password,
-  }) {
+  Future<AuthResult> login({required String email, required String password}) {
     throw UnsupportedError(
       'FirebaseAuthService chỉ phục vụ Google Sign-In. Đăng nhập email dùng ApiAuthService.',
     );
@@ -197,6 +213,10 @@ class FirebaseAuthService implements AuthService {
         return 'Giao diện chọn tài khoản Google không khả dụng trên thiết bị.';
       default:
         final desc = e.description ?? e.toString();
+        if (desc.contains('No credential available') ||
+            desc.contains('No credentials available')) {
+          return 'Thiết bị/máy ảo này chưa đăng nhập tài khoản Google nào. Vui lòng vào Cài đặt (Settings) của máy ảo để thêm tài khoản Google trước.';
+        }
         return 'Lỗi đăng nhập Google: $desc';
     }
   }

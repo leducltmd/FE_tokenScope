@@ -18,6 +18,9 @@ class MockAuthService implements AuthService {
   final Random _random = Random();
 
   @override
+  Stream<AuthResult?> get authStateChanges => const Stream<AuthResult?>.empty();
+
+  @override
   Future<AuthResult> login({
     required String email,
     required String password,
@@ -46,11 +49,7 @@ class MockAuthService implements AuthService {
     await Future<void>.delayed(simulateDelay);
     return AuthResult.success(
       token: 'mock_token_${_random.nextInt(99999)}',
-      user: AuthUser(
-        email: email,
-        name: name,
-        birthDate: birthDate,
-      ),
+      user: AuthUser(email: email, name: name, birthDate: birthDate),
     );
   }
 

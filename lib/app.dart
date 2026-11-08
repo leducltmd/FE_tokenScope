@@ -5,12 +5,19 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
 import 'providers/auth_controller.dart';
 import 'providers/dashboard_controller.dart';
+import 'providers/firebase_lab3_controller.dart';
 import 'providers/usage_history_controller.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
+import 'screens/alerts/alerts_screen.dart';
+import 'screens/budget/budget_screen.dart';
+import 'screens/providers/providers_screen.dart';
 import 'services/api_auth_service.dart';
+
+final GlobalKey<NavigatorState> tokenScopeNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 class TokenScopeApp extends StatelessWidget {
   const TokenScopeApp({
@@ -30,12 +37,29 @@ class TokenScopeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = authController ?? AuthController(service: ApiAuthService());
+    final controller =
+        authController ?? AuthController(service: ApiAuthService());
+    FirebaseLab3Controller.instance.setNavigationHandler((screen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final route = switch (screen) {
+          'budget' => '/budget',
+          'providers' => '/providers',
+          _ => '/alerts',
+        };
+        tokenScopeNavigatorKey.currentState?.pushNamed(route);
+      });
+    });
 
     return MaterialApp(
+      navigatorKey: tokenScopeNavigatorKey,
       title: 'TokenScope',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      routes: {
+        '/alerts': (_) => const AlertsScreen(),
+        '/budget': (_) => const BudgetScreen(),
+        '/providers': (_) => const ProvidersScreen(),
+      },
       home: _AuthFlow(
         controller: controller,
         dashboardController: dashboardController,
@@ -62,8 +86,9 @@ class _AuthFlow extends StatefulWidget {
 }
 
 class _AuthFlowState extends State<_AuthFlow> {
-  late AuthPage _page =
-      widget.controller.isAuthenticated ? AuthPage.dashboard : AuthPage.login;
+  late AuthPage _page = widget.controller.isAuthenticated
+      ? AuthPage.dashboard
+      : AuthPage.login;
 
   @override
   void initState() {

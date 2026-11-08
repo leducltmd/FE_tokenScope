@@ -6,6 +6,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/ts_button.dart';
 import '../../core/widgets/ts_text_field.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import '../../services/provider_service.dart';
 import 'widgets/connect_provider_widgets.dart';
 import 'widgets/provider_key_widgets.dart';
@@ -51,8 +52,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
   final TextEditingController _workspaceIdController = TextEditingController();
 
   /// Service gọi backend thật — kiểm tra và lưu API key.
-  late final ProviderService _service =
-      widget.service ?? ApiProviderService();
+  late final ProviderService _service = widget.service ?? ApiProviderService();
 
   /// Nhà cung cấp đang chọn.
   ConnectableProvider? _provider;
@@ -248,7 +248,8 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
             controller: _nameController,
             icon: Icons.badge_outlined,
             errorText: _nameError,
-            helperText: 'Đặt tên để phân biệt nhiều kết nối của cùng nhà cung cấp.',
+            helperText:
+                'Đặt tên để phân biệt nhiều kết nối của cùng nhà cung cấp.',
             onChanged: (_) {
               if (_nameError != null) setState(() => _nameError = null);
             },
@@ -352,8 +353,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
   }
 
   /// Nhãn của trường Admin API Key.
-  String get _adminKeyLabel =>
-      _provider?.adminKeyLabel ?? 'Admin API Key';
+  String get _adminKeyLabel => _provider?.adminKeyLabel ?? 'Admin API Key';
 
   /// Gợi ý định dạng của Admin API Key.
   String get _adminKeyHint =>
@@ -446,9 +446,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
         TsButton(
           label: 'Hủy',
           variant: TsButtonVariant.danger,
-          onPressed: isBusy
-              ? null
-              : () => Navigator.of(context).maybePop(),
+          onPressed: isBusy ? null : () => Navigator.of(context).maybePop(),
         ),
       ],
     );
@@ -469,11 +467,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.hub_outlined,
-            size: 32,
-            color: AppColors.disabled,
-          ),
+          const Icon(Icons.hub_outlined, size: 32, color: AppColors.disabled),
           const SizedBox(height: AppSpacing.space12),
           Text(
             'Chọn một nhà cung cấp',
@@ -570,7 +564,12 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stack) {
+      FirebaseLab3Controller.instance.recordError(
+        error,
+        stack,
+        reason: 'Lỗi lưu kết nối provider ${_provider?.id}',
+      );
       if (!mounted) return;
       setState(() {
         _status = ConnectionStatus.unreachable;
@@ -620,21 +619,32 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
         adminApiKey: _adminApiKeyValue,
         workspaceId: _workspaceIdValue,
       );
-    } catch (error) {
+    } catch (error, stack) {
+      FirebaseLab3Controller.instance.recordError(
+        error,
+        stack,
+        reason: 'Lỗi lưu kết nối provider ${_provider?.id}',
+      );
       if (!mounted) return;
       setState(() {
         _status = ConnectionStatus.unreachable;
         _backendDetail = error.toString();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể lưu kết nối: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể lưu kết nối: $error')));
       return;
     }
 
     if (!mounted) return;
 
     setState(() => _status = ConnectionStatus.success);
+    // Ghi nhận sự kiện Analytics khi kết nối Provider.
+    FirebaseLab3Controller.instance.logConnectProvider(
+      providerType: _provider!.id,
+      hasAdminKey: _adminApiKeyValue != null && _adminApiKeyValue!.isNotEmpty,
+    );
+
     widget.onConnected?.call(name, _provider!);
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -665,9 +675,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
     final adminKey = _adminKeyController.text.trim();
     final workspaceId = _workspaceIdController.text.trim();
 
-    final nameError = name.isEmpty
-        ? 'Vui lòng nhập tên kết nối.'
-        : null;
+    final nameError = name.isEmpty ? 'Vui lòng nhập tên kết nối.' : null;
     final keyError = key.isEmpty ? 'Vui lòng nhập API Key.' : null;
 
     // Admin API Key là tuỳ chọn — nhưng nếu có nhập thì phải đủ dài.
@@ -676,8 +684,8 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
         : null;
 
     // Workspace ID tuỳ chọn — nếu có nhập thì phải có tiền tố `wsp_`.
-    final workspaceIdError = workspaceId.isNotEmpty &&
-            !workspaceId.toLowerCase().startsWith('wsp_')
+    final workspaceIdError =
+        workspaceId.isNotEmpty && !workspaceId.toLowerCase().startsWith('wsp_')
         ? 'Workspace ID của Anthropic phải bắt đầu bằng "wsp_".'
         : null;
 

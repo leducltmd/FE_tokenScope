@@ -19,14 +19,17 @@ class ApiAuthService implements AuthService {
     ApiConfig? config,
     http.Client? client,
     FirebaseAuthService? firebaseAuthService,
-  })  : _client = ApiClient(config: config, client: client),
-        _customFirebaseAuth = firebaseAuthService;
+  }) : _client = ApiClient(config: config, client: client),
+       _customFirebaseAuth = firebaseAuthService;
 
   final ApiClient _client;
   final FirebaseAuthService? _customFirebaseAuth;
 
   FirebaseAuthService get _firebaseAuth =>
       _customFirebaseAuth ?? FirebaseAuthService();
+
+  @override
+  Stream<AuthResult?> get authStateChanges => _firebaseAuth.authStateChanges;
 
   /// URL đang hoạt động — cập nhật sau khi tìm được host kết nối được.
   String get baseUrl => _client.baseUrl;
@@ -71,8 +74,7 @@ class ApiAuthService implements AuthService {
     final idToken = firebaseResult.token;
     if (idToken != null && idToken.isNotEmpty) {
       try {
-        final backendResult =
-            await _post('/auth/google', {'idToken': idToken});
+        final backendResult = await _post('/auth/google', {'idToken': idToken});
         if (backendResult.isSuccess) {
           final user = backendResult.user;
           final googleUser = user is AuthUser
@@ -81,7 +83,8 @@ class ApiAuthService implements AuthService {
                   email: user.email,
                   name: user.name,
                   birthDate: user.birthDate,
-                  avatarUrl: user.avatarUrl ??
+                  avatarUrl:
+                      user.avatarUrl ??
                       (firebaseResult.user as AuthUser?)?.avatarUrl,
                   authProvider: 'google',
                 )

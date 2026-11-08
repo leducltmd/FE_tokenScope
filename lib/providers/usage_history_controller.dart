@@ -21,6 +21,7 @@ class UsageHistoryController extends ChangeNotifier {
   int _totalCount = 0;
   int _offset = 0;
   static const int _pageSize = 5;
+  int _maxVisibleRecords = 20;
 
   String _searchQuery = '';
   String _selectedProvider = 'all'; // 'all', 'OpenAI', 'Gemini', 'Anthropic'
@@ -40,6 +41,22 @@ class UsageHistoryController extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   String get selectedProvider => _selectedProvider;
   String get selectedTimeRange => _selectedTimeRange;
+
+  int get maxVisibleRecords => _maxVisibleRecords;
+
+  void setMaxVisibleRecords(int value) {
+    final next = value > 0 ? value : 20;
+    if (_maxVisibleRecords == next) return;
+    _maxVisibleRecords = next;
+    if (_records.length > _maxVisibleRecords) {
+      _records = _records.take(_maxVisibleRecords).toList();
+      _offset = _records.length;
+    }
+    _totalCount = _totalCount > _maxVisibleRecords
+        ? _maxVisibleRecords
+        : _totalCount;
+    notifyListeners();
+  }
 
   /// Cho phép thay đổi service (ví dụ chuyển từ mock sang API backend thật khi sẵn sàng).
   void useService(UsageHistoryService service) {
@@ -71,11 +88,11 @@ class UsageHistoryController extends ChangeNotifier {
         provider: _selectedProvider,
         timeRange: _selectedTimeRange,
         offset: 0,
-        limit: _pageSize,
+        limit: _pageSize < _maxVisibleRecords ? _pageSize : _maxVisibleRecords,
       );
 
-      _records = fetched;
-      _totalCount = total;
+      _records = fetched.take(_maxVisibleRecords).toList();
+      _totalCount = total > _maxVisibleRecords ? _maxVisibleRecords : total;
       _offset = fetched.length;
       _hasError = false;
       _errorMessage = null;
@@ -91,22 +108,28 @@ class UsageHistoryController extends ChangeNotifier {
 
   /// Tải thêm bản ghi (Phân trang khi người dùng nhấn "Tải thêm 20 bản ghi").
   Future<void> loadMore() async {
-    if (_isLoadingMore || _isLoading || !hasMore) return;
+    if (_isLoadingMore ||
+        _isLoading ||
+        !hasMore ||
+        _offset >= _maxVisibleRecords) {
+      return;
+    }
 
     _isLoadingMore = true;
     notifyListeners();
 
     try {
+      final remaining = _maxVisibleRecords - _offset;
       final more = await _service.getRecords(
         searchQuery: _searchQuery,
         provider: _selectedProvider,
         timeRange: _selectedTimeRange,
         offset: _offset,
-        limit: 20,
+        limit: remaining < 20 ? remaining : 20,
       );
 
       if (more.isNotEmpty) {
-        _records = [..._records, ...more];
+        _records = [..._records, ...more].take(_maxVisibleRecords).toList();
         _offset += more.length;
       }
     } catch (e) {

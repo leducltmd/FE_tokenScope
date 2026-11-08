@@ -8,7 +8,9 @@ import '../../core/widgets/ts_loading.dart';
 import '../../core/widgets/ts_logo.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../models/usage_record.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import '../../providers/usage_history_controller.dart';
+import '../alerts/alerts_screen.dart';
 import '../usage_details/usage_details_screen.dart';
 import 'widgets/usage_filter_bar.dart';
 import 'widgets/usage_record_card.dart';
@@ -42,7 +44,14 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.loadRecords();
+    _controller.loadRecords().then((_) {
+      if (mounted) {
+        FirebaseLab3Controller.instance.logViewUsageHistory(
+          totalRecords: _controller.totalCount,
+          filterProvider: _controller.selectedProvider,
+        );
+      }
+    });
   }
 
   @override
@@ -92,10 +101,7 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: SafeArea(
-            bottom: false,
-            child: content,
-          ),
+          body: SafeArea(bottom: false, child: content),
         );
       },
     );
@@ -129,10 +135,7 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
             const Spacer(),
             _buildBellButton(),
             const SizedBox(width: AppSpacing.space8),
-            _AvatarButton(
-              name: widget.userName,
-              onPressed: widget.onAvatar,
-            ),
+            _AvatarButton(name: widget.userName, onPressed: widget.onAvatar),
           ],
         ),
         const SizedBox(height: 2),
@@ -157,8 +160,11 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
         color: AppColors.surface,
         shape: const CircleBorder(),
         child: InkWell(
-          onTap: widget.onNotifications ??
-              () => _showToast('Không có thông báo mới.'),
+          onTap:
+              widget.onNotifications ??
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AlertsScreen()),
+              ),
           customBorder: const CircleBorder(),
           child: SizedBox(
             width: 40,
@@ -213,7 +219,8 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.space24),
         child: TsErrorState(
           title: 'Không thể tải lịch sử sử dụng',
-          message: _controller.errorMessage ??
+          message:
+              _controller.errorMessage ??
               'Đã xảy ra lỗi khi kết nối dữ liệu. Vui lòng thử lại.',
           actionLabel: 'Thử lại ngay',
           onRetry: () => _controller.retry(),
@@ -338,19 +345,14 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
   }
 
   void _navigateToDetails(UsageRecord record) {
+    FirebaseLab3Controller.instance.logViewUsageDetail(
+      model: record.model,
+      isSuccess: record.isSuccess,
+      latencyMs: record.latencyMs,
+    );
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UsageDetailsScreen(record: record),
-      ),
-    );
-  }
-
-  void _showToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }

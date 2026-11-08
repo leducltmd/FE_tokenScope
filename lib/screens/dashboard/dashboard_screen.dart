@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -11,6 +12,7 @@ import '../../models/usage_summary.dart';
 import '../../providers/auth_controller.dart';
 import '../../providers/budget_controller.dart';
 import '../../providers/dashboard_controller.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import '../../providers/usage_history_controller.dart';
 import '../usage_history/usage_history_screen.dart';
 import '../analysis/ai_analysis_screen.dart';
@@ -24,6 +26,9 @@ import 'widgets/hero_metric_card.dart';
 import 'widgets/provider_usage_card.dart';
 import 'widgets/quick_action_grid.dart';
 import 'widgets/weekly_usage_chart.dart';
+import 'package:flutter/services.dart';
+import '../alerts/alerts_screen.dart';
+import 'widgets/promo_banner.dart';
 
 /// Màn hình tổng quan của TokenScope.
 ///
@@ -58,6 +63,9 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _tabIndex = 0;
+  bool _showPromoBanner = true;
+  final _firebase = FirebaseLab3Controller.instance;
+
   late final UsageHistoryController _historyController =
       widget.historyController ?? UsageHistoryController();
 
@@ -69,6 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _dashboardController.load();
+    _historyController.setMaxVisibleRecords(_firebase.maxHistoryItems);
     // Nạp sẵn vài bản ghi gần nhất cho mục "Truy vấn gần nhất".
     _historyController.loadRecords();
   }
@@ -80,6 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (widget.dashboardController == null) _dashboardController.dispose();
     super.dispose();
   }
+
   String _range = '7 ngày qua';
 
   static const _navItems = [
@@ -129,7 +139,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return TsProviderUsage(
         name: item.provider,
         percent: percent,
-        models: '${item.requestCount} lượt gọi · ${_formatNumber(item.totalTokens)} token',
+        models:
+            '${item.requestCount} lượt gọi · ${_formatNumber(item.totalTokens)} token',
         tokens: _formatNumber(item.totalTokens),
         cost: '\$${item.totalCost.toStringAsFixed(2)} USD',
         letter: item.provider.isEmpty
@@ -176,10 +187,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   /// Tổng token 7 ngày gần nhất.
-  double get _weeklyTotal => _weeklyPoints.fold<double>(
-    0,
-    (sum, point) => sum + point.value,
-  );
+  double get _weeklyTotal =>
+      _weeklyPoints.fold<double>(0, (sum, point) => sum + point.value);
 
   /// Lượt gọi gần nhất từ controller lịch sử.
   List<TsActivityEntry> get _recentActivities {
@@ -194,7 +203,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         cost: '\$${record.cost.toStringAsFixed(4)}',
         time: record.timeDisplay,
         letter: letter,
-        color: _providerColors[_providerTypeOf(record.provider)] ??
+        color:
+            _providerColors[_providerTypeOf(record.provider)] ??
             AppColors.primary,
       );
     }).toList();
@@ -221,7 +231,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         bottom: false,
         // Lắng nghe controller để lời chào cập nhật theo tên vừa đăng ký.
         child: ListenableBuilder(
-          listenable: Listenable.merge([widget.controller, _dashboardController]),
+          listenable: Listenable.merge([
+            widget.controller,
+            _dashboardController,
+          ]),
           builder: (context, _) {
             return Column(
               children: [
@@ -262,7 +275,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           subtitle: 'Theo dõi token & chi phí AI đa nền tảng',
           userName: widget.controller.displayName,
           lastSynced: 'Đồng bộ 1m trước',
-          onNotifications: () => _showInfo('Thông báo', 'Bạn không có thông báo mới.'),
+          onNotifications: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const AlertsScreen())),
           onAvatar: () => setState(() => _tabIndex = 3),
         ),
         Padding(
@@ -272,6 +287,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_showPromoBanner && _firebase.isPromoBannerEnabled)
+                TsPromoBanner(
+                  message: _firebase.promoBannerText,
+                  onDismiss: () => setState(() => _showPromoBanner = false),
+                ),
               TsBudgetAlertBanner(
                 title: 'Cảnh báo ngân sách',
                 percentLabel:
@@ -287,7 +307,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               TsHeroMetricCard(
                 totalTokens: _formatNumber(_summary?.totalTokens ?? 0),
                 totalTokensLabel: 'tokens',
-                costLabel: '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD',
+                costLabel:
+                    '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD',
                 inputTokens: _formatNumber(_summary?.totalTokens ?? 0),
                 inputPercent: 0.735,
                 outputTokens: '0',
@@ -416,12 +437,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       userName: widget.controller.displayName,
       embedded: true,
       onAvatar: () => setState(() => _tabIndex = 3),
-      onNotifications: () => _showInfo('Thông báo', 'Bạn không có thông báo mới.'),
+      onNotifications: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const AlertsScreen())),
     );
   }
 
-  // ── Cài đặt ───────────────────────────────────────────────────────────
+  // ── Cài đặt ─────────────────────────────────────────────────────────────
   Widget _buildSettings() {
+    final user = widget.controller.user;
+    final email = user?.email ?? 'Chưa đăng nhập';
+    final uid = user?.id ?? 'Chưa xác thực UID';
+    final authMethod = user?.authProvider == 'google'
+        ? 'Google Sign-In'
+        : 'Email/Mật khẩu';
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenPadding,
@@ -430,7 +460,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         AppSpacing.space32,
       ),
       children: [
-        _buildSectionTitle('Cài đặt', 'Tài khoản'),
+        // 1. Tài khoản
+        _buildSectionTitle('Tài khoản', 'Đang hoạt động'),
         const SizedBox(height: AppSpacing.space12),
         TsCard(
           padding: EdgeInsets.zero,
@@ -439,31 +470,488 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildSettingsRow(
                 icon: Icons.person_outline_rounded,
                 label: 'Hồ sơ',
-                value: 'demo@tokenscope.io',
+                value: widget.controller.displayName,
               ),
               const Divider(height: 1, color: AppColors.border),
               _buildSettingsRow(
-                icon: Icons.notifications_outlined,
-                label: 'Cảnh báo ngân sách',
-                value: 'Ở mức 80%',
+                icon: Icons.email_outlined,
+                label: 'Email',
+                value: email,
               ),
               const Divider(height: 1, color: AppColors.border),
               _buildSettingsRow(
-                icon: Icons.link_rounded,
-                label: 'Khóa API',
-                value: '•••• •••• 8f2a',
+                icon: Icons.security_rounded,
+                label: 'Phương thức',
+                value: authMethod,
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space16,
+                  vertical: AppSpacing.space12,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.fingerprint_rounded,
+                      size: 20,
+                      color: AppColors.secondaryText,
+                    ),
+                    const SizedBox(width: AppSpacing.space12),
+                    const Expanded(
+                      child: Text(
+                        'Mã tài khoản',
+                        style: TextStyle(
+                          fontFamily: AppTypography.fontFamily,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      uid.length > 12 ? '\${uid.substring(0, 12)}...' : uid,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: uid));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã sao chép mã tài khoản'),
+                          ),
+                        );
+                      },
+                      child: const Icon(
+                        Icons.copy_rounded,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
+
         const SizedBox(height: AppSpacing.space24),
+
+        // 2. Báo cáo chi phí
+        _buildSectionTitle('Báo cáo chi phí', 'PDF'),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          'Xuất báo cáo PDF chi phí và theo dõi tiến độ tải lên.',
+          style: AppTypography.bodySmall.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: AppSpacing.space12),
         TsButton(
-          label: 'Đăng xuất',
+          label: 'Xuất báo cáo PDF',
+          icon: Icons.picture_as_pdf_rounded,
+          onPressed: _handleExportReport,
+        ),
+
+        const SizedBox(height: AppSpacing.space24),
+
+        // 3. Tùy chỉnh trải nghiệm
+        _buildSectionTitle('Tùy chỉnh trải nghiệm', 'Thiết lập'),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          'Một số thiết lập có thể được cập nhật mà không cần phát hành lại ứng dụng:',
+          style: AppTypography.bodySmall.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        TsCard(
+          padding: const EdgeInsets.all(AppSpacing.space12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildConfigParamRow(
+                'promo_banner_enabled',
+                '\${_firebase.isPromoBannerEnabled}',
+              ),
+              const Divider(height: 12, color: AppColors.border),
+              _buildConfigParamRow(
+                'promo_banner_text',
+                _firebase.promoBannerText,
+              ),
+              const Divider(height: 12, color: AppColors.border),
+              _buildConfigParamRow(
+                'max_history_items',
+                '\${_firebase.maxHistoryItems}',
+              ),
+              const Divider(height: 12, color: AppColors.border),
+              _buildConfigParamRow(
+                'enable_pdf_export',
+                '\${_firebase.isPdfExportEnabled}',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        TsButton(
+          label: 'Cập nhật thiết lập',
+          icon: Icons.sync_rounded,
+          variant: TsButtonVariant.secondary,
+          onPressed: _handleRefreshRemoteConfig,
+        ),
+
+        const SizedBox(height: AppSpacing.space24),
+
+        // 4. Thông báo
+        _buildSectionTitle('Thông báo', 'Đẩy'),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          'Nhận thông báo trên thiết bị và xem lại trong trung tâm thông báo.',
+          style: AppTypography.bodySmall.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        TsButton(
+          label: 'Mở trung tâm thông báo',
+          icon: Icons.notifications_active_rounded,
+          variant: TsButtonVariant.secondary,
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AlertsScreen()),
+            );
+          },
+        ),
+
+        if (kDebugMode && !kIsWeb) ...[
+          const SizedBox(height: AppSpacing.space24),
+
+          _buildSectionTitle('Chẩn đoán ứng dụng', 'Chỉ bản debug'),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            'Dùng để kiểm tra báo cáo lỗi trên thiết bị thử nghiệm.',
+            style: AppTypography.bodySmall.copyWith(fontSize: 12),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          Row(
+            children: [
+              Expanded(
+                child: TsButton(
+                  label: 'Gửi lỗi non-fatal',
+                  icon: Icons.bug_report_rounded,
+                  variant: TsButtonVariant.secondary,
+                  onPressed: _handleCrashlyticsNonFatal,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: TsButton(
+                  label: 'Kiểm tra crash',
+                  icon: Icons.error_outline_rounded,
+                  variant: TsButtonVariant.danger,
+                  onPressed: _handleCrashlyticsFatal,
+                ),
+              ),
+            ],
+          ),
+        ],
+
+        const SizedBox(height: AppSpacing.space32),
+
+        // 5. Đăng xuất
+        TsButton(
+          label: 'Đăng xuất tài khoản',
           variant: TsButtonVariant.danger,
           icon: Icons.logout_rounded,
           onPressed: _handleLogout,
         ),
       ],
+    );
+  }
+
+  Widget _buildConfigParamRow(String key, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$key: ',
+          style: const TextStyle(
+            fontSize: 12,
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.w700,
+            color: AppColors.primaryDark,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: AppColors.navy,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Các xử lý dịch vụ ────────────────────────────────────────────────────
+  Future<void> _handleRefreshRemoteConfig() async {
+    final updated = await _firebase.refreshRemoteConfig();
+    if (!mounted) return;
+    _historyController.setMaxVisibleRecords(_firebase.maxHistoryItems);
+    await _historyController.loadRecords(refresh: true);
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          updated ? 'Đã cập nhật thiết lập.' : 'Thiết lập hiện đã mới nhất.',
+        ),
+        backgroundColor: AppColors.emerald,
+      ),
+    );
+  }
+
+  Future<void> _handleCrashlyticsNonFatal() async {
+    await _firebase.setCrashlyticsCustomKey('screen', 'settings_diagnostics');
+    await _firebase.recordError(
+      Exception('Manual Crashlytics non-fatal test'),
+      StackTrace.current,
+      reason: 'Manual debug test',
+      fatal: false,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã gửi báo cáo lỗi non-fatal.'),
+        backgroundColor: AppColors.emerald,
+      ),
+    );
+  }
+
+  Future<void> _handleCrashlyticsFatal() async {
+    final confirmed = await TsDialog.show(
+      context,
+      title: 'Kiểm tra crash ứng dụng?',
+      message:
+          'Ứng dụng sẽ dừng ngay lập tức. Hãy mở lại ứng dụng sau đó để gửi báo cáo lên Crashlytics.',
+      confirmLabel: 'Kiểm tra ngay',
+    );
+    if (!confirmed) return;
+    _firebase.triggerTestCrash();
+  }
+
+  Future<void> _handleExportReport() async {
+    if (!_firebase.isPdfExportEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tính năng xuất báo cáo đang tạm tắt.')),
+      );
+      return;
+    }
+
+    final user = widget.controller.user;
+    final email = user?.email ?? 'user@tokenscope.io';
+    final name = widget.controller.displayName;
+
+    double uploadProgress = 0.0;
+    String uploadStatus = 'Đang khởi tạo tệp PDF báo cáo...';
+    String? finalUrl;
+    String? uploadError;
+    bool isCompleted = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            if (uploadProgress == 0.0 && !isCompleted && uploadError == null) {
+              Future.microtask(() async {
+                try {
+                  final summary = _summary;
+                  final totalTokens = summary?.totalTokens ?? 0;
+                  final totalCost = summary?.totalCost ?? 0.0;
+                  final requestCount = summary?.requestCount ?? 0;
+
+                  final providerList = (summary?.byProvider ?? []).map((p) {
+                    return {
+                      'name': p.provider,
+                      'model': p.providerType,
+                      'tokens': p.totalTokens,
+                      'cost': p.totalCost,
+                    };
+                  }).toList();
+
+                  final pdfBytes = await _firebase.generatePdfReport(
+                    userName: name,
+                    userEmail: email,
+                    totalTokens: totalTokens,
+                    totalCost: totalCost,
+                    requestCount: requestCount,
+                    providers: providerList,
+                  );
+
+                  setDialogState(() {
+                    uploadStatus = 'Đang tải báo cáo lên máy chủ...';
+                  });
+
+                  final result = await _firebase.uploadReportPdf(
+                    pdfBytes: pdfBytes,
+                    onProgress: (progress) {
+                      setDialogState(() {
+                        uploadProgress = progress;
+                        uploadStatus =
+                            'Tiến độ tải lên: ${(progress * 100).toStringAsFixed(0)}%';
+                      });
+                    },
+                  );
+
+                  if (result.isSuccess) {
+                    await _firebase.logExportReport(
+                      format: 'pdf',
+                      fileSizeBytes: result.fileSizeBytes,
+                    );
+                    setDialogState(() {
+                      isCompleted = true;
+                      finalUrl = result.downloadUrl;
+                      uploadStatus = 'Tải lên hoàn tất thành công!';
+                    });
+                  } else {
+                    await _firebase.recordError(
+                      Exception(result.errorMessage),
+                      StackTrace.current,
+                      reason: 'Lỗi tải tệp lên Firebase Cloud Storage',
+                    );
+                    setDialogState(() {
+                      uploadError = result.errorMessage;
+                      uploadStatus = 'Tải lên thất bại';
+                    });
+                  }
+                } catch (e, stack) {
+                  await _firebase.recordError(
+                    e,
+                    stack,
+                    reason: 'Lỗi ngoại lệ sinh/tải báo cáo PDF',
+                  );
+                  setDialogState(() {
+                    uploadError = e.toString();
+                    uploadStatus = 'Đã xảy ra lỗi';
+                  });
+                }
+              });
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.cloud_upload_rounded, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text(
+                    'Xuất báo cáo',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(uploadStatus, style: AppTypography.bodySmall),
+                  const SizedBox(height: 12),
+                  if (uploadError == null && !isCompleted)
+                    LinearProgressIndicator(
+                      value: uploadProgress > 0 ? uploadProgress : null,
+                      color: AppColors.primary,
+                      backgroundColor: AppColors.softPurple,
+                    ),
+                  if (isCompleted && finalUrl != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.emerald.withAlpha(20),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.emerald.withAlpha(60),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Đã lưu báo cáo thành công:',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.emerald,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            finalUrl!,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (uploadError != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withAlpha(20),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.error.withAlpha(60),
+                        ),
+                      ),
+                      child: Text(
+                        uploadError!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                if (isCompleted && finalUrl != null)
+                  TextButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: finalUrl!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã sao chép link tải tệp PDF.'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    label: const Text('Sao chép link'),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    isCompleted || uploadError != null ? 'Đóng' : 'Ẩn',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -530,10 +1018,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           )
         else
-          Text(
-            trailing,
-            style: AppTypography.bodySmall.copyWith(fontSize: 13),
-          ),
+          Text(trailing, style: AppTypography.bodySmall.copyWith(fontSize: 13)),
       ],
     );
   }
@@ -549,9 +1034,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showInfo(String title, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title — $message')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$title — $message')));
   }
 
   Future<void> _handleLogout() async {

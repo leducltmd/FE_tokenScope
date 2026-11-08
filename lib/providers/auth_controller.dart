@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 
 import '../services/api_auth_service.dart';
 import '../services/api_session.dart';
 import '../services/auth_service.dart';
+import 'firebase_lab3_controller.dart';
 
 enum AuthStatus { unknown, authenticating, authenticated, unauthenticated }
 
@@ -10,7 +12,9 @@ enum AuthStatus { unknown, authenticating, authenticated, unauthenticated }
 class AuthController extends ChangeNotifier {
   /// Mặc định dùng [ApiAuthService] kết hợp Firebase cho Google Sign-In.
   AuthController({AuthService? service})
-    : _service = service ?? ApiAuthService();
+    : _service = service ?? ApiAuthService() {
+    _bindAuthStateChanges();
+  }
 
   AuthService _service;
 
@@ -20,6 +24,7 @@ class AuthController extends ChangeNotifier {
   String? _error;
   String? _errorCode;
   AuthUser? _user;
+  StreamSubscription<AuthResult?>? _authStateSubscription;
 
   AuthStatus get status => _status;
   String? get token => _token;
@@ -39,13 +44,26 @@ class AuthController extends ChangeNotifier {
 
   /// Thay nguồn dữ liệu — dùng khi chạy test hoặc thay đổi môi trường.
   void useService(AuthService service) {
+    _authStateSubscription?.cancel();
     _service = service;
+    _bindAuthStateChanges();
   }
 
-  Future<bool> login({
-    required String email,
-    required String password,
-  }) async {
+  void _bindAuthStateChanges() {
+    _authStateSubscription = _service.authStateChanges.listen((result) {
+      if (_status == AuthStatus.authenticating) return;
+      if (result == null) {
+        // Email/password sessions belong to the backend, so a null Firebase
+        // event must not log the user out of that session.
+        if (_token != null && _user?.authProvider != 'google') return;
+        _setUnauthenticated();
+      } else {
+        _apply(result);
+      }
+    });
+  }
+
+  Future<bool> login({required String email, required String password}) async {
     _set(AuthStatus.authenticating);
     final result = await _service.login(email: email, password: password);
     return _apply(result);
@@ -88,7 +106,9 @@ class AuthController extends ChangeNotifier {
     if (result.isCancelled) {
       // Người dùng tự hủy chọn tài khoản Google (nhấn Back/Cancel):
       // Không xem là lỗi nghiêm trọng, êm dịu phục hồi trạng thái.
-      _status = _user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated;
+      _status = _user != null
+          ? AuthStatus.authenticated
+          : AuthStatus.unauthenticated;
       _error = null;
       _errorCode = null;
       notifyListeners();
@@ -108,14 +128,27 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Ghi nhận sự kiện Analytics khi đăng xuất (Slide 15)
+    FirebaseLab3Controller.instance.logLogout(screen: 'settings');
+
     await _service.logout();
+    _token = null;
+    _refreshToken = null;
+    _user = null;
+    _setUnauthenticated(notify: false);
+    ApiSession.instance.clear();
+    notifyListeners();
+  }
+
+  void _setUnauthenticated({bool notify = true}) {
     _token = null;
     _refreshToken = null;
     _user = null;
     _status = AuthStatus.unauthenticated;
     _error = null;
+    _errorCode = null;
     ApiSession.instance.clear();
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   bool _apply(AuthResult result) {
@@ -126,6 +159,19 @@ class AuthController extends ChangeNotifier {
       _error = null;
       _errorCode = null;
       _status = AuthStatus.authenticated;
+
+      // Gắn User ID và Custom Key cho Crashlytics & Analytics (Slide 15 & 18)
+      if (_user?.id != null) {
+        FirebaseLab3Controller.instance.setCrashlyticsUserId(_user!.id!);
+        FirebaseLab3Controller.instance.setAnalyticsUserId(_user!.id!);
+        FirebaseLab3Controller.instance.setCrashlyticsCustomKey(
+          'auth_provider',
+          _user?.authProvider ?? 'password',
+        );
+      }
+      FirebaseLab3Controller.instance.logLogin(
+        method: _user?.authProvider == 'google' ? 'google' : 'email_password',
+      );
 
       // Gán token cho ApiSession nếu là TokenScope JWT từ Backend Node.js.
       // Khi đăng nhập Google đã hoán đổi thành công với Backend (có refreshToken hoặc Backend JWT),
@@ -138,13 +184,9 @@ class AuthController extends ChangeNotifier {
         ApiSession.instance.clear();
       }
     } else {
-      _token = null;
-      _refreshToken = null;
-      _user = null;
+      _setUnauthenticated(notify: false);
       _error = result.error;
       _errorCode = result.code;
-      _status = AuthStatus.unauthenticated;
-      ApiSession.instance.clear();
     }
     notifyListeners();
     return result.isSuccess;
@@ -164,5 +206,11 @@ class AuthController extends ChangeNotifier {
     _error = null;
     _errorCode = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 }

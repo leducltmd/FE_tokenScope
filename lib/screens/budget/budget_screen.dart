@@ -12,6 +12,7 @@ import '../../core/widgets/ts_logo.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../models/budget_overview.dart';
 import '../../providers/budget_controller.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import 'widgets/budget_widgets.dart';
 
 /// Màn hình "Quản lý ngân sách AI".
@@ -98,7 +99,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   if (_controller.hasError && _controller.overview == null) {
                     return TsErrorState(
                       title: 'Không thể tải ngân sách',
-                      message: _controller.errorMessage ??
+                      message:
+                          _controller.errorMessage ??
                           'Đã xảy ra lỗi khi kết nối máy chủ. Vui lòng thử lại.',
                       actionLabel: 'Thử lại ngay',
                       onRetry: () => _controller.load(),
@@ -183,7 +185,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
             const _LiveBadge(),
             const Spacer(),
             IconButton(
-              onPressed: widget.onBack ?? () => Navigator.of(context).maybePop(),
+              onPressed:
+                  widget.onBack ?? () => Navigator.of(context).maybePop(),
               icon: const Icon(Icons.arrow_back_rounded, size: 22),
               color: AppColors.navy,
               tooltip: 'Quay lại',
@@ -241,7 +244,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         Flexible(
                           child: Text(
                             '/ \$${totalLimit.toStringAsFixed(2)}',
-                            style: AppTypography.bodySmall.copyWith(fontSize: 13),
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 13,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -312,7 +317,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   // ── Dải cảnh báo ──────────────────────────────────────────────────────
   Widget _buildAlertBanner(BudgetOverview overview) {
     return BudgetAlertBanner(
-      title: 'CẢNH BÁO: Đã vượt ngưỡng an toàn '
+      title:
+          'CẢNH BÁO: Đã vượt ngưỡng an toàn '
           '${_alertThreshold.toStringAsFixed(0)}%',
       message:
           '(\$${overview.threshold.toStringAsFixed(2)}). Tốc độ sử dụng cao!',
@@ -409,10 +415,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Text(
             overage > 0
                 ? 'Dự báo chạm mức \$${overview.forecast.toStringAsFixed(2)} '
-                    'vào ngày $daysInMonth/${now.month} với tốc độ gọi API '
-                    'hiện nay (Nguy cơ thâm hụt \$${overage.toStringAsFixed(2)})'
+                      'vào ngày $daysInMonth/${now.month} với tốc độ gọi API '
+                      'hiện nay (Nguy cơ thâm hụt \$${overage.toStringAsFixed(2)})'
                 : 'Dự báo chi tiêu cuối tháng là \$${overview.forecast.toStringAsFixed(2)} '
-                    'với tốc độ gọi API hiện nay — vẫn nằm trong hạn mức.',
+                      'với tốc độ gọi API hiện nay — vẫn nằm trong hạn mức.',
             style: AppTypography.bodySmall.copyWith(
               fontSize: 12.5,
               color: AppColors.secondaryText,
@@ -427,8 +433,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Widget _buildRateLimitCard() {
     return BudgetSwitchRow(
       title: 'Bật tự động giới hạn Rate-limit',
-      description:
-          'Tự động dừng gọi API khi đạt ngưỡng để tránh vượt hạn mức.',
+      description: 'Tự động dừng gọi API khi đạt ngưỡng để tránh vượt hạn mức.',
       value: _autoRateLimit,
       onChanged: (value) => setState(() => _autoRateLimit = value),
     );
@@ -469,7 +474,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 models: provider.models,
                 spent: provider.spent,
                 limit: provider.limit,
-                color: _providerColors[provider.providerType] ?? AppColors.primary,
+                color:
+                    _providerColors[provider.providerType] ?? AppColors.primary,
               ),
             ),
             const SizedBox(height: AppSpacing.space12),
@@ -500,11 +506,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.tune_rounded,
-                size: 18,
-                color: AppColors.navy,
-              ),
+              const Icon(Icons.tune_rounded, size: 18, color: AppColors.navy),
               const SizedBox(width: AppSpacing.space8),
               Expanded(
                 child: Text(
@@ -591,16 +593,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   // ── Hành động ─────────────────────────────────────────────────────────
   void _showInfo(String title, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title — $message')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$title — $message')));
   }
 
   void _showPeriodPicker() {
     final overview = _controller.overview;
-    final periods = [
-      if (overview != null) 'CHU KỲ: ${overview.periodLabel}',
-    ];
+    final periods = [if (overview != null) 'CHU KỲ: ${overview.periodLabel}'];
 
     showModalBottomSheet<void>(
       context: context,
@@ -649,7 +649,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   void _scrollToAdjust() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Điều chỉnh hạn mức ở mục "Điều chỉnh ngân sách".')),
+      const SnackBar(
+        content: Text('Điều chỉnh hạn mức ở mục "Điều chỉnh ngân sách".'),
+      ),
     );
   }
 
@@ -667,6 +669,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       confirmLabel: 'Lưu ngân sách',
     );
     if (!confirmed || !mounted) return;
+
+    // Ghi nhận sự kiện Analytics khi cập nhật ngân sách.
+    FirebaseLab3Controller.instance.logUpdateBudget(
+      hasLimit: totalLimit > 0,
+      warningPercent: _alertThreshold.round(),
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Đã cập nhật ngân sách tháng 11.')),
@@ -737,10 +745,7 @@ class _AllocationTab extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Container(
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 6,
-            vertical: 9,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(

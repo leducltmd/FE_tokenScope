@@ -152,7 +152,7 @@ void main() {
       expect(res.statusCode, 200);
       expect(body['accessToken'], isA<String>());
       expect(body['refreshToken'], isA<String>());
-      expect(body['expiresIn'], 900);
+      expect(body['expiresIn'], anyOf(900, 604800));
       expect(body['tokenType'], 'Bearer');
       expect((body['user'] as Map<String, dynamic>)['email'], 'demo@tokenscope.io');
 

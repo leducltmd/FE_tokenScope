@@ -10,18 +10,14 @@ class AuthResult {
     this.statusCode,
   }) : error = null;
 
-  const AuthResult.failure(
-    this.error, {
-    this.code,
-    this.statusCode,
-  }) : token = null,
+  const AuthResult.failure(this.error, {this.code, this.statusCode})
+    : token = null,
       refreshToken = null,
       user = null;
 
   /// Kết quả khi người dùng tự hủy chọn tài khoản Google (nhấn Back / Cancel).
-  const AuthResult.cancelled({
-    this.error = 'Đã hủy chọn tài khoản Google.',
-  }) : token = null,
+  const AuthResult.cancelled({this.error = 'Đã hủy chọn tài khoản Google.'})
+    : token = null,
       refreshToken = null,
       user = null,
       code = 'CANCELLED',
@@ -120,10 +116,11 @@ class AuthUser {
 /// [FirebaseAuthService] cho đăng nhập Google qua Firebase.
 /// [MockAuthService] chỉ dùng để chạy giao diện độc lập trong unit/widget test.
 abstract class AuthService {
-  Future<AuthResult> login({
-    required String email,
-    required String password,
-  });
+  /// Emits Firebase session changes when the selected auth provider supports it.
+  /// Backend-only auth services can keep the default empty stream.
+  Stream<AuthResult?> get authStateChanges => const Stream<AuthResult?>.empty();
+
+  Future<AuthResult> login({required String email, required String password});
 
   Future<AuthResult> register({
     required String name,

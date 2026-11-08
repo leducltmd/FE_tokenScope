@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Quy tắc bảo mật Firebase Cloud Storage cho TokenScope (PRM393 - Lab 3)
+// Chỉ cho phép người dùng đã xác thực đọc và ghi tệp báo cáo trong thư mục của chính mình (UID)
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /reports/{uid}/{fileName} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // Mặc định từ chối mọi truy cập trái phép khác
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
