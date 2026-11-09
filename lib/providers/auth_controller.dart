@@ -119,6 +119,24 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Khôi phục phiên đăng nhập (Firebase hoặc token đã lưu).
+  /// Đăng nhập bằng GitHub qua Firebase Authentication thật.
+  Future<bool> signInWithGitHub() async {
+    _set(AuthStatus.authenticating);
+    final result = await _service.signInWithGitHub();
+
+    if (result.isCancelled) {
+      _status = _user != null
+          ? AuthStatus.authenticated
+          : AuthStatus.unauthenticated;
+      _error = null;
+      _errorCode = null;
+      notifyListeners();
+      return false;
+    }
+
+    return _apply(result);
+  }
+
   Future<bool> restoreSession() async {
     final result = await _service.restoreSession();
     if (result != null && result.isSuccess) {
@@ -170,7 +188,7 @@ class AuthController extends ChangeNotifier {
         );
       }
       FirebaseLab3Controller.instance.logLogin(
-        method: _user?.authProvider == 'google' ? 'google' : 'email_password',
+        method: _user?.authProvider ?? 'email_password',
       );
 
       // Gán token cho ApiSession nếu là TokenScope JWT từ Backend Node.js.
@@ -178,7 +196,8 @@ class AuthController extends ChangeNotifier {
       // gán token vào ApiSession để có toàn quyền gọi các API backend.
       if (result.token != null &&
           result.token!.isNotEmpty &&
-          (_user?.authProvider != 'google' || result.refreshToken != null)) {
+          ((_user?.authProvider != 'google' && _user?.authProvider != 'github') ||
+              result.refreshToken != null)) {
         ApiSession.instance.setAccessToken(result.token);
       } else {
         ApiSession.instance.clear();

@@ -81,6 +81,20 @@ class MockAuthService implements AuthService {
   }
 
   @override
+  Future<AuthResult> signInWithGitHub() async {
+    await Future<void>.delayed(simulateDelay);
+    return AuthResult.success(
+      token: 'mock_github_id_token_${_random.nextInt(99999)}',
+      user: const AuthUser(
+        id: 'github_uid_456',
+        email: 'developer@github.com',
+        name: 'GitHub Developer',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/9919?v=4',
+        authProvider: 'github',
+      ),
+    );
+  }
+
   Future<AuthResult?> restoreSession() async {
     return null;
   }

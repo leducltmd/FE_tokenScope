@@ -26,6 +26,8 @@ import 'widgets/hero_metric_card.dart';
 import 'widgets/provider_usage_card.dart';
 import 'widgets/quick_action_grid.dart';
 import 'widgets/weekly_usage_chart.dart';
+import 'widgets/line_trend_chart.dart';
+import 'widgets/provider_distribution_chart.dart';
 import 'package:flutter/services.dart';
 import '../alerts/alerts_screen.dart';
 import 'widgets/promo_banner.dart';
@@ -190,6 +192,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double get _weeklyTotal =>
       _weeklyPoints.fold<double>(0, (sum, point) => sum + point.value);
 
+  /// Điểm biểu đồ đường 30 ngày lấy từ dữ liệu thật.
+  List<TsLinePoint> get _monthlyLinePoints {
+    final summary = _summary;
+    if (summary == null || summary.daily.isEmpty) {
+      return const <TsLinePoint>[];
+    }
+
+    final map = <String, int>{};
+    for (final d in summary.daily) {
+      map[d.date] = d.totalTokens;
+    }
+
+    final now = DateTime.now();
+    final points = <TsLinePoint>[];
+
+    for (var i = 29; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final monthStr = date.month.toString().padLeft(2, '0');
+      final dayStr = date.day.toString().padLeft(2, '0');
+      final key = '${date.year}-$monthStr-$dayStr';
+      final tokens = map[key] ?? 0;
+      points.add(
+        TsLinePoint(
+          label: '$dayStr/$monthStr',
+          value: tokens.toDouble(),
+          date: date,
+        ),
+      );
+    }
+    return points;
+  }
+
+  /// Tổng token 30 ngày gần nhất.
+  double get _monthlyTotal =>
+      _monthlyLinePoints.fold<double>(0, (sum, point) => sum + point.value);
+
+  /// Tổng token Input thực tế từ các bản ghi lịch sử.
+  int get _totalInputTokens {
+    if (_historyController.records.isEmpty) {
+      return ((_summary?.totalTokens ?? 0) * 0.735).round();
+    }
+    return _historyController.records.fold<int>(
+      0,
+      (sum, r) => sum + r.promptTokens,
+    );
+  }
+
+  /// Tổng token Output thực tế từ các bản ghi lịch sử.
+  int get _totalOutputTokens {
+    if (_historyController.records.isEmpty) {
+      return ((_summary?.totalTokens ?? 0) * 0.265).round();
+    }
+    return _historyController.records.fold<int>(
+      0,
+      (sum, r) => sum + r.completionTokens,
+    );
+  }
+
+  double get _inputPercent {
+    final total = _totalInputTokens + _totalOutputTokens;
+    if (total <= 0) return 0.735;
+    return _totalInputTokens / total;
+  }
+
+  double get _outputPercent {
+    final total = _totalInputTokens + _totalOutputTokens;
+    if (total <= 0) return 0.265;
+    return _totalOutputTokens / total;
+  }
+
   /// Lượt gọi gần nhất từ controller lịch sử.
   List<TsActivityEntry> get _recentActivities {
     return _historyController.records.take(3).map((record) {
@@ -295,7 +367,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               TsBudgetAlertBanner(
                 title: 'Cảnh báo ngân sách',
                 percentLabel:
-                    '${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD đã dùng',
+                    '${(((_summary?.totalCost ?? 0) / 400.0) * 100).round()}% hạn mức',
                 message:
                     'Tổng chi phí AI trong kỳ hiện tại là '
                     '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} '
@@ -309,14 +381,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 totalTokensLabel: 'tokens',
                 costLabel:
                     '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD',
-                inputTokens: _formatNumber(_summary?.totalTokens ?? 0),
-                inputPercent: 0.735,
-                outputTokens: '0',
-                outputPercent: 0.265,
+                inputTokens: _formatNumber(_totalInputTokens),
+                inputPercent: _inputPercent,
+                outputTokens: _formatNumber(_totalOutputTokens),
+                outputPercent: _outputPercent,
                 budgetLabel: 'Tiến trình chi tiêu tháng',
                 remainingLabel:
-                    'Tổng chi phí \$${(_summary?.totalCost ?? 0).toStringAsFixed(2)}',
-                spentPercent: 0.87,
+                    'Còn lại \$${(400.0 - (_summary?.totalCost ?? 0)).clamp(0.0, 400.0).toStringAsFixed(2)} / \$400.00',
+                spentPercent:
+                    ((_summary?.totalCost ?? 0) / 400.0).clamp(0.0, 1.0),
               ),
               const SizedBox(height: AppSpacing.space16),
               TsQuickActionGrid(
@@ -389,6 +462,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ── Biểu đồ 7 ngày ────────────────────────────────────────────────────
   Widget _buildWeeklySection() {
+    final is30Days = _range == '30 ngày qua';
+    final is3Months = _range == '3 tháng qua';
+
+    final title = is30Days
+        ? 'Xu hướng sử dụng 30 ngày'
+        : is3Months
+            ? 'Phân bổ AI 3 tháng qua'
+            : 'Xu hướng sử dụng 7 ngày';
+
+    final subtitle = is30Days
+        ? 'Tổng 30 ngày: ${_formatNumber(_monthlyTotal.round())} token'
+        : is3Months
+            ? 'Tỷ lệ & tần suất sử dụng theo nhà cung cấp AI'
+            : 'Tổng 7 ngày: ${_formatNumber(_weeklyTotal.round())} token';
+
+    final Widget chartWidget;
+    if (is30Days) {
+      chartWidget = TsLineTrendChart(points: _monthlyLinePoints);
+    } else if (is3Months) {
+      chartWidget = TsProviderDistributionChart(
+        providers: _summary?.byProvider ?? const [],
+        totalTokens: _summary?.totalTokens ?? 0,
+      );
+    } else {
+      chartWidget = TsWeeklyChart(points: _weeklyPoints);
+    }
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space16),
       decoration: BoxDecoration(
@@ -404,7 +503,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'Xu hướng sử dụng 7 ngày',
+                  title,
                   style: AppTypography.h3.copyWith(fontSize: 17),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -420,11 +519,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: AppSpacing.space8),
           Text(
-            'Tổng 7 ngày: ${_formatNumber(_weeklyTotal.round())} token',
+            subtitle,
             style: AppTypography.bodySmall.copyWith(fontSize: 12.5),
           ),
           const SizedBox(height: AppSpacing.space16),
-          TsWeeklyChart(points: _weeklyPoints),
+          chartWidget,
         ],
       ),
     );
@@ -450,7 +549,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final uid = user?.id ?? 'Chưa xác thực UID';
     final authMethod = user?.authProvider == 'google'
         ? 'Google Sign-In'
-        : 'Email/Mật khẩu';
+        : user?.authProvider == 'github'
+            ? 'GitHub OAuth'
+            : 'Email/Mật khẩu';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -510,7 +611,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Text(
-                      uid.length > 12 ? '\${uid.substring(0, 12)}...' : uid,
+                      uid.length > 12 ? '${uid.substring(0, 12)}...' : uid,
                       style: const TextStyle(
                         fontSize: 12,
                         fontFamily: 'monospace',
@@ -572,7 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _buildConfigParamRow(
                 'promo_banner_enabled',
-                '\${_firebase.isPromoBannerEnabled}',
+                '${_firebase.isPromoBannerEnabled}',
               ),
               const Divider(height: 12, color: AppColors.border),
               _buildConfigParamRow(
@@ -582,12 +683,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Divider(height: 12, color: AppColors.border),
               _buildConfigParamRow(
                 'max_history_items',
-                '\${_firebase.maxHistoryItems}',
+                '${_firebase.maxHistoryItems}',
               ),
               const Divider(height: 12, color: AppColors.border),
               _buildConfigParamRow(
                 'enable_pdf_export',
-                '\${_firebase.isPdfExportEnabled}',
+                '${_firebase.isPdfExportEnabled}',
               ),
             ],
           ),

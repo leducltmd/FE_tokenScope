@@ -145,6 +145,59 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
+  Future<AuthResult> signInWithGitHub() async {
+    try {
+      final GithubAuthProvider githubProvider = GithubAuthProvider();
+      githubProvider.addScope('read:user');
+      githubProvider.addScope('user:email');
+
+      final UserCredential userCredential;
+      if (kIsWeb) {
+        userCredential = await _auth.signInWithPopup(githubProvider);
+      } else {
+        userCredential = await _auth.signInWithProvider(githubProvider);
+      }
+
+      final User? firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        return const AuthResult.failure(
+          'Không tìm thấy thông tin tài khoản Firebase sau khi đăng nhập GitHub.',
+          code: 'NULL_FIREBASE_USER',
+        );
+      }
+
+      final String? firebaseIdToken = await firebaseUser.getIdToken();
+
+      final authUser = AuthUser(
+        id: firebaseUser.uid,
+        email: firebaseUser.email,
+        name: firebaseUser.displayName ??
+            (firebaseUser.email != null
+                ? firebaseUser.email!.split('@').first
+                : 'GitHub User'),
+        avatarUrl: firebaseUser.photoURL,
+        authProvider: 'github',
+      );
+
+      return AuthResult.success(token: firebaseIdToken, user: authUser);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'canceled' ||
+          e.code == 'web-context-canceled' ||
+          e.code == 'web-context-cancelled' ||
+          e.code == 'credential-already-in-use') {
+        return const AuthResult.cancelled(
+          error: 'Đã hủy đăng nhập với GitHub.',
+        );
+      }
+      return AuthResult.failure(_formatFirebaseAuthError(e), code: e.code);
+    } catch (e) {
+      return AuthResult.failure(
+        'Đăng nhập GitHub thất bại: $e',
+        code: 'GITHUB_ERROR',
+      );
+    }
+  }
+
   Future<AuthResult?> restoreSession() async {
     if (!_hasFirebaseAuth) return null;
     try {

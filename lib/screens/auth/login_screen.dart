@@ -47,6 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isGitHubLoading = false;
   bool _rememberMe = true;
   String? _errorMessage;
 
@@ -102,8 +103,28 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  Future<void> _handleGitHubLogin() async {
+    setState(() {
+      _errorMessage = null;
+      _isGitHubLoading = true;
+    });
+
+    final success = await _controller.signInWithGitHub();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isGitHubLoading = false;
+      _errorMessage = success ? null : _controller.error;
+    });
+
+    if (success) {
+      widget.onAuthenticated?.call();
+    }
+  }
+
   Widget build(BuildContext context) {
-    final isBusy = _isLoading || _isGoogleLoading;
+    final isBusy = _isLoading || _isGoogleLoading || _isGitHubLoading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -203,7 +224,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       TsSocialButton(
                         label: 'Tiếp tục với GitHub',
                         icon: Icons.code_rounded,
-                        onPressed: isBusy ? null : () { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng đăng nhập với GitHub đang được phát triển.'))); },
+                        isLoading: _isGitHubLoading,
+                        onPressed: isBusy ? null : _handleGitHubLogin,
                       ),
                       const SizedBox(height: AppSpacing.space32),
                       Row(

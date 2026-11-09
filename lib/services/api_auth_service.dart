@@ -107,6 +107,50 @@ class ApiAuthService implements AuthService {
   }
 
   @override
+  Future<AuthResult> signInWithGitHub() async {
+    final firebaseResult = await _firebaseAuth.signInWithGitHub();
+    if (!firebaseResult.isSuccess || firebaseResult.isCancelled) {
+      return firebaseResult;
+    }
+
+    final idToken = firebaseResult.token;
+    if (idToken != null && idToken.isNotEmpty) {
+      try {
+        final backendResult = await _post('/auth/github', {'idToken': idToken});
+        if (backendResult.isSuccess) {
+          final user = backendResult.user;
+          final ghUser = user is AuthUser
+              ? AuthUser(
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  birthDate: user.birthDate,
+                  avatarUrl:
+                      user.avatarUrl ??
+                      (firebaseResult.user as AuthUser?)?.avatarUrl,
+                  authProvider: 'github',
+                )
+              : user;
+
+          return AuthResult.success(
+            token: backendResult.token,
+            refreshToken: backendResult.refreshToken,
+            user: ghUser,
+          );
+        }
+      } catch (e) {
+        try {
+          final fallbackResult = await _post('/auth/google', {'idToken': idToken});
+          if (fallbackResult.isSuccess) {
+            return fallbackResult;
+          }
+        } catch (_) {}
+      }
+    }
+
+    return firebaseResult;
+  }
+
   Future<AuthResult?> restoreSession() {
     return _firebaseAuth.restoreSession();
   }

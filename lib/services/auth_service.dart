@@ -134,6 +134,9 @@ abstract class AuthService {
   /// Đăng nhập bằng Google thông qua Firebase Authentication.
   Future<AuthResult> signInWithGoogle();
 
+  /// Đăng nhập bằng GitHub thông qua Firebase Authentication.
+  Future<AuthResult> signInWithGitHub();
+
   /// Khôi phục phiên đăng nhập trước đó (nếu còn hiệu lực).
   Future<AuthResult?> restoreSession();
 
