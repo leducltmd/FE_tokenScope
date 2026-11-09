@@ -244,7 +244,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           color: AppColors.indigo,
           borderRadius: BorderRadius.circular(AppRadius.medium),
           child: InkWell(
-            onTap: _noop,
+            onTap: _handleCreateProject,
             borderRadius: BorderRadius.circular(AppRadius.medium),
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -291,7 +291,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             const SizedBox(width: AppSpacing.space12),
         ],
         const Spacer(),
-        const ProjectProviderChip(label: 'OpenAI', onTap: _noop),
+        ProjectProviderChip(label: 'OpenAI', onTap: () => _handleFilterProvider('OpenAI')),
       ],
     );
   }
@@ -415,5 +415,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   /// Chip nhà cung cấp chưa có hành động.
-  static void _noop() {}
+  void _handleCreateProject() { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dự án được tự động đồng bộ khi bạn liên kết API Key mới.'))); }
+  void _handleFilterProvider(String provider) { setState(() { _query = _query == provider ? '' : provider; }); }
 }

@@ -203,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TsSocialButton(
                         label: 'Tiếp tục với GitHub',
                         icon: Icons.code_rounded,
-                        onPressed: isBusy ? null : () {},
+                        onPressed: isBusy ? null : () { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng đăng nhập với GitHub đang được phát triển.'))); },
                       ),
                       const SizedBox(height: AppSpacing.space32),
                       Row(

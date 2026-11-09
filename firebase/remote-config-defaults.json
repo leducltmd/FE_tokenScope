@@ -1,0 +1,6 @@
+{
+  "promo_banner_enabled": true,
+  "promo_banner_text": "Thông báo: Hệ thống TokenScope đang hoạt động bình thường và đồng bộ dữ liệu theo thời gian thực.",
+  "max_history_items": 50,
+  "enable_pdf_export": true
+}
