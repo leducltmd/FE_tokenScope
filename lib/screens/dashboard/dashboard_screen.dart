@@ -861,7 +861,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String? finalUrl;
     String? uploadError;
     bool isCompleted = false;
-    bool isFallbackUsed = false;
 
     await showDialog<void>(
       context: context,
@@ -917,11 +916,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                     setDialogState(() {
                       isCompleted = true;
-                      isFallbackUsed = result.isFallback;
                       finalUrl = result.downloadUrl;
-                      uploadStatus = result.isFallback
-                          ? 'Xuất báo cáo thành công (Chế độ Dự phòng)!'
-                          : 'Tải lên hoàn tất thành công!';
+                      uploadStatus = 'Đã lưu trữ thành công!';
                     });
                   } else {
                     await _firebase.recordError(
@@ -988,21 +984,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          const Row(
                             children: [
                               Icon(
-                                isFallbackUsed
-                                    ? Icons.folder_special_rounded
-                                    : Icons.cloud_done_rounded,
+                                Icons.cloud_done_rounded,
                                 color: AppColors.emerald,
                                 size: 16,
                               ),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Text(
-                                isFallbackUsed
-                                    ? 'Đã lưu trữ an toàn (Chế độ Dự phòng):'
-                                    : 'Đã lưu báo cáo thành công:',
-                                style: const TextStyle(
+                                'Đã lưu trữ thành công:',
+                                style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.emerald,

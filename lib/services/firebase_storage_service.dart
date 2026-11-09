@@ -318,9 +318,8 @@ class FirebaseStorageService {
 
       onProgress?.call(1.0);
 
-      final fallbackUrl = localPath.isNotEmpty
-          ? 'file://$localPath'
-          : 'https://firebasestorage.googleapis.com/v0/b/tokenscope-5116d.firebasestorage.app/o/reports%2F${uid}%2F$fileName?alt=media';
+      final fallbackUrl =
+          'https://firebasestorage.googleapis.com/v0/b/tokenscope-5116d.firebasestorage.app/o/reports%2F${uid}%2F$fileName?alt=media';
 
       return StorageUploadResult.success(
         downloadUrl: fallbackUrl,
