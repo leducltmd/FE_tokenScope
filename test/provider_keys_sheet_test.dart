@@ -123,12 +123,12 @@ void main() {
         ),
       );
 
-      await tester.enterText(find.byType(TextField).at(2), 'wsp_abc123');
+      await tester.enterText(find.byType(TextField).at(2), 'wrkspc_abc123');
       await tester.ensureVisible(find.text('Lưu khoá'));
       await tester.tap(find.text('Lưu khoá'));
       await tester.pump(); await tester.pump(const Duration(milliseconds: 200));
 
-      expect(sentWorkspace, 'wsp_abc123');
+      expect(sentWorkspace, 'wrkspc_abc123');
     });
 
     testWidgets('báo lỗi khi Workspace ID sai tiền tố', (tester) async {
@@ -155,7 +155,7 @@ void main() {
 
       expect(called, isFalse);
       expect(
-        find.text('Workspace ID phải bắt đầu bằng "wsp_".'),
+        find.text('Workspace ID của Anthropic phải bắt đầu bằng "wrkspc_".'),
         findsOneWidget,
       );
     });

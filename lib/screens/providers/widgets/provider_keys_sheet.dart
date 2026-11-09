@@ -157,7 +157,7 @@ class _ProviderKeysSheetState extends State<ProviderKeysSheet> {
               if (_supportsWorkspaceId) ...[
                 TsTextField(
                   label: 'Claude Workspace ID',
-                  hint: 'wsp_...',
+                  hint: 'wrkspc_...',
                   controller: _workspaceController,
                   icon: Icons.workspaces_outline,
                   errorText: _workspaceError,
@@ -205,10 +205,7 @@ class _ProviderKeysSheetState extends State<ProviderKeysSheet> {
     final adminKeyError = adminKey.isNotEmpty && adminKey.length < 8
         ? 'Admin API Key quá ngắn.'
         : null;
-    final workspaceError = workspaceId.isNotEmpty &&
-            !workspaceId.toLowerCase().startsWith('wsp_')
-        ? 'Workspace ID phải bắt đầu bằng "wsp_".'
-        : null;
+    final workspaceError = validateClaudeWorkspaceId(workspaceId);
 
     setState(() {
       _keyError = keyError;

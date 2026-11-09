@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/provider_connection.dart';
@@ -9,6 +11,12 @@ import '../services/provider_service.dart';
 class ProvidersController extends ChangeNotifier {
   ProvidersController({ProviderService? service})
     : _service = service ?? ApiProviderService();
+
+  static final _usageChanges = StreamController<void>.broadcast();
+
+  static Stream<void> get usageChanges => _usageChanges.stream;
+
+  static void notifyUsageChanged() => _usageChanges.add(null);
 
   ProviderService _service;
 
@@ -76,6 +84,7 @@ class ProvidersController extends ChangeNotifier {
 
     try {
       final result = await _service.syncUsage(providerId);
+      if (result.synced > 0) notifyUsageChanged();
       await loadProviders();
       return result;
     } finally {
@@ -97,7 +106,11 @@ class ProvidersController extends ChangeNotifier {
 
   /// Xoá một kết nối.
   Future<void> deleteProvider(String providerId) async {
+    final hadUsage = _providers.any(
+      (provider) => provider.id == providerId && provider.requestCount > 0,
+    );
     await _service.delete(providerId);
+    if (hadUsage) notifyUsageChanged();
     await loadProviders();
   }
 

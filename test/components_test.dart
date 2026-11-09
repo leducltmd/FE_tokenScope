@@ -286,7 +286,7 @@ void main() {
       // Cảnh báo ngân sách.
       expect(find.text('Cảnh báo ngân sách'), findsOneWidget);
       // Thẻ chỉ số nổi bật.
-      expect(find.text('Tổng token tháng này'), findsOneWidget);
+      expect(find.text('Tổng token đã ghi nhận'), findsOneWidget);
       expect(find.text('2.450.000'), findsOneWidget);
       // Điều hướng dưới.
       expect(find.byType(TsBottomNavigation), findsOneWidget);

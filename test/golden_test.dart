@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tokenscope/app.dart';
 import 'package:tokenscope/providers/auth_controller.dart';
 
-import 'helpers/font_loader.dart';
+import 'helpers/fake_controllers.dart';
 import 'helpers/fake_services.dart';
+import 'helpers/font_loader.dart';
 import 'helpers/mock_auth_service.dart';
 
 /// Sinh ảnh giao diện ở kích thước màn hình điện thoại để kiểm tra thị giác.
@@ -23,6 +24,7 @@ void main() {
         authController: AuthController(service: MockAuthService()),
         dashboardController: buildFakeDashboardController(),
         historyController: buildFakeHistoryController(),
+        budgetController: buildFakeBudgetController(),
       ),
     );
     await tester.pumpAndSettle();

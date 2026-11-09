@@ -11,6 +11,8 @@ class FakeDashboardService implements DashboardService {
   Future<UsageSummary> getSummary() async {
     return UsageSummary(
       totalTokens: 2450000,
+      inputTokens: 1800000,
+      outputTokens: 650000,
       totalCost: 34.8,
       requestCount: 1482,
       byProvider: const [

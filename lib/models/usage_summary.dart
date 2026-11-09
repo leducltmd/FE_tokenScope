@@ -6,10 +6,16 @@ class UsageSummary {
     required this.requestCount,
     required this.byProvider,
     required this.daily,
+    this.inputTokens,
+    this.outputTokens,
   });
 
   /// Tổng token đã dùng.
   final int totalTokens;
+
+  /// Phân rã token nếu backend cung cấp.
+  final int? inputTokens;
+  final int? outputTokens;
 
   /// Tổng chi phí (USD).
   final double totalCost;
@@ -28,6 +34,8 @@ class UsageSummary {
     final days = json['daily'];
     return UsageSummary(
       totalTokens: (json['totalTokens'] as num?)?.toInt() ?? 0,
+      inputTokens: (json['inputTokens'] as num?)?.toInt(),
+      outputTokens: (json['outputTokens'] as num?)?.toInt(),
       totalCost: (json['totalCost'] as num?)?.toDouble() ?? 0,
       requestCount: (json['requestCount'] as num?)?.toInt() ?? 0,
       byProvider: providers is List

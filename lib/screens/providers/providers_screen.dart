@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -372,7 +374,7 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
           workspaceId,
           clearAdminApiKey = false,
         }) async {
-          await _controller.updateProviderKeys(
+          final updated = await _controller.updateProviderKeys(
             provider.id,
             apiKey: apiKey,
             adminApiKey: adminApiKey,
@@ -383,6 +385,12 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Đã cập nhật khoá cho "${provider.name}".')),
           );
+          if ((updated.providerType == 'openai' ||
+                  updated.providerType == 'anthropic') &&
+              updated.maskedAdminApiKey != null &&
+              (adminApiKey != null || workspaceId != null)) {
+            unawaited(_sync(updated));
+          }
         },
       ),
     );
