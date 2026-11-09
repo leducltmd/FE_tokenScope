@@ -151,6 +151,7 @@ class ApiAuthService implements AuthService {
     return firebaseResult;
   }
 
+  @override
   Future<AuthResult?> restoreSession() {
     return _firebaseAuth.restoreSession();
   }

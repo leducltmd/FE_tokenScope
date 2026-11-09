@@ -45,6 +45,9 @@ abstract final class AppTypography {
     color: Color(0xFF111827),
   );
 
+  /// Nội dung vừa — alias cho body (16px).
+  static const TextStyle bodyMedium = body;
+
   /// Nội dung nhỏ — 14px · Thường (400).
   static const TextStyle bodySmall = TextStyle(
     fontFamily: fontFamily,

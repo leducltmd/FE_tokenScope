@@ -102,7 +102,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  @override
   Future<void> _handleGitHubLogin() async {
     setState(() {
       _errorMessage = null;
@@ -123,6 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  @override
   Widget build(BuildContext context) {
     final isBusy = _isLoading || _isGoogleLoading || _isGitHubLoading;
 

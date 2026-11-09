@@ -235,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return _historyController.records.fold<int>(
       0,
-      (sum, r) => sum + r.promptTokens,
+      (sum, r) => sum + r.inputTokens,
     );
   }
 
@@ -246,7 +246,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return _historyController.records.fold<int>(
       0,
-      (sum, r) => sum + r.completionTokens,
+      (sum, r) => sum + r.outputTokens,
     );
   }
 
