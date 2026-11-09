@@ -7,6 +7,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/ts_button.dart';
 import '../../core/widgets/ts_text_field.dart';
 import '../../providers/firebase_lab3_controller.dart';
+import '../../providers/providers_controller.dart';
 import '../../services/provider_service.dart';
 import 'widgets/connect_provider_widgets.dart';
 import 'widgets/provider_key_widgets.dart';
@@ -48,7 +49,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
   /// Admin API Key của tổ chức (OpenAI / Anthropic) — để đọc Usage & Costs.
   final TextEditingController _adminKeyController = TextEditingController();
 
-  /// Workspace ID của Anthropic (`wsp_...`) — tuỳ chọn.
+  /// Workspace ID của Anthropic (`wrkspc_...`) — tuỳ chọn.
   final TextEditingController _workspaceIdController = TextEditingController();
 
   /// Service gọi backend thật — kiểm tra và lưu API key.
@@ -310,7 +311,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
           if (_provider!.supportsWorkspaceId) ...[
             TsTextField(
               label: 'Claude Workspace ID',
-              hint: 'wsp_...',
+              hint: 'wrkspc_...',
               controller: _workspaceIdController,
               icon: Icons.workspaces_outline,
               errorText: _workspaceIdError,
@@ -612,13 +613,16 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
     setState(() => _status = ConnectionStatus.checking);
 
     try {
-      await _service.connect(
+      final connection = await _service.connect(
         name: name,
         providerType: _provider!.id,
         apiKey: _keyController.text.trim(),
         adminApiKey: _adminApiKeyValue,
         workspaceId: _workspaceIdValue,
       );
+      if (connection.requestCount > 0) {
+        ProvidersController.notifyUsageChanged();
+      }
     } catch (error, stack) {
       FirebaseLab3Controller.instance.recordError(
         error,
@@ -683,11 +687,7 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
         ? 'Admin API Key quá ngắn.'
         : null;
 
-    // Workspace ID tuỳ chọn — nếu có nhập thì phải có tiền tố `wsp_`.
-    final workspaceIdError =
-        workspaceId.isNotEmpty && !workspaceId.toLowerCase().startsWith('wsp_')
-        ? 'Workspace ID của Anthropic phải bắt đầu bằng "wsp_".'
-        : null;
+    final workspaceIdError = validateClaudeWorkspaceId(workspaceId);
 
     setState(() {
       _nameError = nameError;

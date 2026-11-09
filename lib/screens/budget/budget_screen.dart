@@ -66,7 +66,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.load();
+    });
   }
 
   @override

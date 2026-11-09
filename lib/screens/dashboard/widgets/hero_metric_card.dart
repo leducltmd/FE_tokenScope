@@ -29,18 +29,19 @@ class TsHeroMetricCard extends StatelessWidget {
   final String costLabel;
 
   final String inputTokens;
-  final double inputPercent;
+  final double? inputPercent;
   final String outputTokens;
-  final double outputPercent;
+  final double? outputPercent;
 
   final String budgetLabel;
   final String remainingLabel;
-  final double spentPercent;
+  final double? spentPercent;
 
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final spentPercent = this.spentPercent;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.extraLarge),
@@ -94,9 +95,11 @@ class TsHeroMetricCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Tổng token tháng này',
+                              'Tổng token đã ghi nhận',
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.onPrimary.withValues(alpha: 0.75),
+                                color: AppColors.onPrimary.withValues(
+                                  alpha: 0.75,
+                                ),
                                 fontSize: 12.5,
                               ),
                             ),
@@ -115,7 +118,9 @@ class TsHeroMetricCard extends StatelessWidget {
                             Text(
                               totalTokensLabel,
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.onPrimary.withValues(alpha: 0.65),
+                                color: AppColors.onPrimary.withValues(
+                                  alpha: 0.65,
+                                ),
                                 fontSize: 12.5,
                               ),
                             ),
@@ -141,7 +146,9 @@ class TsHeroMetricCard extends StatelessWidget {
                             Text(
                               'Chi phí ước tính',
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.onPrimary.withValues(alpha: 0.7),
+                                color: AppColors.onPrimary.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 11,
                               ),
                             ),
@@ -201,7 +208,9 @@ class TsHeroMetricCard extends StatelessWidget {
                               child: Text(
                                 budgetLabel,
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.onPrimary.withValues(alpha: 0.8),
+                                  color: AppColors.onPrimary.withValues(
+                                    alpha: 0.8,
+                                  ),
                                   fontSize: 12.5,
                                 ),
                                 maxLines: 1,
@@ -224,20 +233,22 @@ class TsHeroMetricCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: AppSpacing.space8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            value: spentPercent.clamp(0.0, 1.0),
-                            minHeight: 7,
-                            backgroundColor: AppColors.onPrimary.withValues(
-                              alpha: 0.18,
-                            ),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFFFBBF24),
+                        if (spentPercent != null) ...[
+                          const SizedBox(height: AppSpacing.space8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: spentPercent.clamp(0.0, 1.0),
+                              minHeight: 7,
+                              backgroundColor: AppColors.onPrimary.withValues(
+                                alpha: 0.18,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Color(0xFFFBBF24),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -253,10 +264,13 @@ class TsHeroMetricCard extends StatelessWidget {
 
 /// Thanh phân rã input/output.
 class _BreakdownBar extends StatelessWidget {
-  const _BreakdownBar({required this.inputPercent, required this.outputPercent});
+  const _BreakdownBar({
+    required this.inputPercent,
+    required this.outputPercent,
+  });
 
-  final double inputPercent;
-  final double outputPercent;
+  final double? inputPercent;
+  final double? outputPercent;
 
   @override
   Widget build(BuildContext context) {
@@ -264,18 +278,16 @@ class _BreakdownBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       child: SizedBox(
         height: 10,
-        child: Row(
-          children: [
-            Expanded(
-              flex: (inputPercent * 100).round().clamp(1, 100),
-              child: Container(color: const Color(0xFFA5B4FC)),
-            ),
-            const SizedBox(width: 3),
-            Expanded(
-              flex: (outputPercent * 100).round().clamp(1, 100),
-              child: Container(color: const Color(0xFF38BDF8)),
-            ),
-          ],
+        width: double.infinity,
+        child: ColoredBox(
+          color: (outputPercent ?? 0) > 0
+              ? const Color(0xFF38BDF8)
+              : AppColors.onPrimary.withValues(alpha: 0.18),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: inputPercent ?? 0,
+            child: const ColoredBox(color: Color(0xFFA5B4FC)),
+          ),
         ),
       ),
     );
@@ -294,10 +306,11 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
   final String value;
-  final double percent;
+  final double? percent;
 
   @override
   Widget build(BuildContext context) {
+    final percent = this.percent;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,7 +334,9 @@ class _LegendItem extends StatelessWidget {
               ),
               const SizedBox(height: 1),
               Text(
-                '$value (${(percent * 100).toStringAsFixed(1)}%)',
+                percent == null
+                    ? value
+                    : '$value (${(percent * 100).toStringAsFixed(1)}%)',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.onPrimary,
                   fontSize: 13,

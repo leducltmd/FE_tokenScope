@@ -13,6 +13,7 @@ class BudgetController extends ChangeNotifier {
   BudgetService _service;
 
   bool _isLoading = false;
+  bool _isDisposed = false;
   bool _hasError = false;
   String? _errorMessage;
   BudgetOverview? _overview;
@@ -30,7 +31,7 @@ class BudgetController extends ChangeNotifier {
 
   /// Tải số liệu ngân sách từ backend.
   Future<void> load() async {
-    if (_isLoading) return;
+    if (_isLoading || _isDisposed) return;
     _isLoading = true;
     _hasError = false;
     _errorMessage = null;
@@ -45,7 +46,13 @@ class BudgetController extends ChangeNotifier {
       _errorMessage = error.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

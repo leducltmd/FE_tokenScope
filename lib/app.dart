@@ -4,6 +4,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
 import 'providers/auth_controller.dart';
+import 'providers/budget_controller.dart';
 import 'providers/dashboard_controller.dart';
 import 'providers/firebase_lab3_controller.dart';
 import 'providers/usage_history_controller.dart';
@@ -25,6 +26,7 @@ class TokenScopeApp extends StatelessWidget {
     this.authController,
     this.dashboardController,
     this.historyController,
+    this.budgetController,
   });
 
   final AuthController? authController;
@@ -34,6 +36,8 @@ class TokenScopeApp extends StatelessWidget {
 
   /// Controller lịch sử dùng cho mục truy vấn gần nhất (null → gọi backend thật).
   final UsageHistoryController? historyController;
+
+  final BudgetController? budgetController;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +68,7 @@ class TokenScopeApp extends StatelessWidget {
         controller: controller,
         dashboardController: dashboardController,
         historyController: historyController,
+        budgetController: budgetController,
       ),
     );
   }
@@ -75,11 +80,13 @@ class _AuthFlow extends StatefulWidget {
     required this.controller,
     this.dashboardController,
     this.historyController,
+    this.budgetController,
   });
 
   final AuthController controller;
   final DashboardController? dashboardController;
   final UsageHistoryController? historyController;
+  final BudgetController? budgetController;
 
   @override
   State<_AuthFlow> createState() => _AuthFlowState();
@@ -145,6 +152,7 @@ class _AuthFlowState extends State<_AuthFlow> {
           onLogout: () => _go(AuthPage.login),
           dashboardController: widget.dashboardController,
           historyController: widget.historyController,
+          budgetController: widget.budgetController,
         ),
       },
     );

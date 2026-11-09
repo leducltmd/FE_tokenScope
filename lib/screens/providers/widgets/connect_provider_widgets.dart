@@ -65,7 +65,7 @@ class ConnectableProvider {
   /// (Anthropic) chỉ chấp nhận Admin API Key của tổ chức.
   final bool supportsAdminKey;
 
-  /// Nhà cung cấp cần thêm Workspace ID (`wsp_...`) bên cạnh khoá.
+  /// Nhà cung cấp cần thêm Workspace ID (`wrkspc_...`) bên cạnh khoá.
   ///
   /// Hiện chỉ Anthropic là true — Secret API Key chưa được scope vào Workspace
   /// nào thì mọi request phải kèm header `anthropic-workspace-id`.
@@ -132,7 +132,7 @@ const List<ConnectableProvider> kConnectableProviders = [
     requiresScopeNote:
         'Usage Report và Cost Report chỉ đọc được với Admin API Key có quyền '
         'tổ chức. Nếu Secret API Key chưa được scope vào Workspace nào, '
-        'hãy nhập thêm Workspace ID (wsp_...).',
+        'hãy nhập thêm Workspace ID (wrkspc_...).',
   ),
   ConnectableProvider(
     id: 'google',

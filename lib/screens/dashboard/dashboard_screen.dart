@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -13,6 +15,7 @@ import '../../providers/auth_controller.dart';
 import '../../providers/budget_controller.dart';
 import '../../providers/dashboard_controller.dart';
 import '../../providers/firebase_lab3_controller.dart';
+import '../../providers/providers_controller.dart';
 import '../../providers/usage_history_controller.dart';
 import '../usage_history/usage_history_screen.dart';
 import '../analysis/ai_analysis_screen.dart';
@@ -74,21 +77,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// Số liệu tổng quan lấy từ backend thật.
   late final DashboardController _dashboardController =
       widget.dashboardController ?? DashboardController();
+  late final BudgetController _budgetController =
+      widget.budgetController ?? BudgetController();
+  late final StreamSubscription<void> _usageChanges;
+  Future<void>? _usageRefresh;
 
   @override
   void initState() {
     super.initState();
-    _dashboardController.load();
     _historyController.setMaxVisibleRecords(_firebase.maxHistoryItems);
-    // Nạp sẵn vài bản ghi gần nhất cho mục "Truy vấn gần nhất".
-    _historyController.loadRecords();
+    _refreshUsage();
+    _usageChanges = ProvidersController.usageChanges.listen(
+      (_) => _refreshUsage(),
+    );
+  }
+
+  void _refreshUsage() {
+    // Giữ lần tải lại sau đồng bộ nếu lần tải trước vẫn đang chạy.
+    final pending = _usageRefresh;
+    _usageRefresh = pending == null
+        ? _loadUsage()
+        : pending.then((_) => _loadUsage());
+  }
+
+  Future<void> _loadUsage() async {
+    if (!mounted) return;
+    await Future.wait([
+      _dashboardController.load(),
+      _historyController.loadRecords(refresh: true),
+      _budgetController.load(),
+    ]);
   }
 
   @override
   void dispose() {
+    _usageChanges.cancel();
     // Chỉ dispose những controller do màn hình tự tạo.
     if (widget.historyController == null) _historyController.dispose();
     if (widget.dashboardController == null) _dashboardController.dispose();
+    if (widget.budgetController == null) _budgetController.dispose();
     super.dispose();
   }
 
@@ -369,27 +396,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 percentLabel:
                     '${(((_summary?.totalCost ?? 0) / 400.0) * 100).round()}% hạn mức',
                 message:
-                    'Tổng chi phí AI trong kỳ hiện tại là '
+                    'Tổng chi phí AI đã ghi nhận là '
                     '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} '
                     '(${_summary?.requestCount ?? 0} lượt gọi). '
                     'Chạm để điều chỉnh.',
                 onTap: _openBudgetScreen,
               ),
               const SizedBox(height: AppSpacing.space16),
-              TsHeroMetricCard(
-                totalTokens: _formatNumber(_summary?.totalTokens ?? 0),
-                totalTokensLabel: 'tokens',
-                costLabel:
-                    '\$${(_summary?.totalCost ?? 0).toStringAsFixed(2)} USD',
-                inputTokens: _formatNumber(_totalInputTokens),
-                inputPercent: _inputPercent,
-                outputTokens: _formatNumber(_totalOutputTokens),
-                outputPercent: _outputPercent,
-                budgetLabel: 'Tiến trình chi tiêu tháng',
-                remainingLabel:
-                    'Còn lại \$${(400.0 - (_summary?.totalCost ?? 0)).clamp(0.0, 400.0).toStringAsFixed(2)} / \$400.00',
-                spentPercent:
-                    ((_summary?.totalCost ?? 0) / 400.0).clamp(0.0, 1.0),
+              ListenableBuilder(
+                listenable: _budgetController,
+                builder: (context, _) => _buildHeroMetricCard(),
               ),
               const SizedBox(height: AppSpacing.space16),
               TsQuickActionGrid(
@@ -452,7 +468,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: AppSpacing.space12),
               _buildSectionTitle('Truy vấn gần nhất', 'Hôm nay'),
               const SizedBox(height: AppSpacing.space12),
-              TsActivityFeed(entries: _recentActivities),
+              ListenableBuilder(
+                listenable: _historyController,
+                builder: (context, _) =>
+                    TsActivityFeed(entries: _recentActivities),
+              ),
             ],
           ),
         ),
@@ -461,6 +481,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ── Biểu đồ 7 ngày ────────────────────────────────────────────────────
+  Widget _buildHeroMetricCard() {
+    final summary = _summary;
+    final inputTokens = summary?.inputTokens;
+    final outputTokens = summary?.outputTokens;
+    final hasBreakdown = inputTokens != null && outputTokens != null;
+    final splitTotal = (inputTokens ?? 0) + (outputTokens ?? 0);
+    final denominator = splitTotal > 0 ? splitTotal : 1;
+
+    final budget = _budgetController.overview;
+    var budgetDetails = _budgetController.hasError
+        ? 'Không tải được hạn mức'
+        : 'Đang tải hạn mức…';
+    double? spentPercent;
+    if (budget != null) {
+      budgetDetails = 'Chưa đặt hạn mức';
+      if (budget.totalLimit > 0) {
+        budgetDetails =
+            '\$${budget.spent.toStringAsFixed(2)} / '
+            '\$${budget.totalLimit.toStringAsFixed(2)}';
+        spentPercent = budget.spent / budget.totalLimit;
+      }
+    }
+
+    return TsHeroMetricCard(
+      totalTokens: _formatNumber(summary?.totalTokens ?? 0),
+      totalTokensLabel: 'tokens',
+      costLabel: '\$${(summary?.totalCost ?? 0).toStringAsFixed(2)} USD',
+      inputTokens: inputTokens == null ? '—' : _formatNumber(inputTokens),
+      inputPercent: hasBreakdown ? inputTokens / denominator : null,
+      outputTokens: outputTokens == null ? '—' : _formatNumber(outputTokens),
+      outputPercent: hasBreakdown ? outputTokens / denominator : null,
+      budgetLabel: 'Tiến trình chi tiêu tháng',
+      remainingLabel: budgetDetails,
+      spentPercent: spentPercent,
+    );
+  }
+
   Widget _buildWeeklySection() {
     final is30Days = _range == '30 ngày qua';
     final is3Months = _range == '3 tháng qua';

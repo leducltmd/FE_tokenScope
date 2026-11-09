@@ -577,13 +577,13 @@ void main() {
       );
       await tester.enterText(
         find.byType(TextField).at(3),
-        'wsp_abc123',
+        'wrkspc_abc123',
       );
       await tester.tap(find.text('Kiểm tra kết nối'));
       await tester.pumpAndSettle();
 
       expect(service.lastAdminApiKey, 'sk-ant-admin-key-123');
-      expect(service.lastWorkspaceId, 'wsp_abc123');
+      expect(service.lastWorkspaceId, 'wrkspc_abc123');
     });
 
     testWidgets('hiển thị hai dòng trạng thái khoá riêng biệt', (
@@ -636,7 +636,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Workspace ID của Anthropic phải bắt đầu bằng "wsp_".'),
+        find.text('Workspace ID của Anthropic phải bắt đầu bằng "wrkspc_".'),
         findsOneWidget,
       );
     });

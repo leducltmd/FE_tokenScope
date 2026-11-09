@@ -4,6 +4,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 
+String? validateClaudeWorkspaceId(String value) {
+  final normalized = value.toLowerCase();
+  if (normalized.isEmpty ||
+      normalized.startsWith('wrkspc_') ||
+      normalized.startsWith('wsp_')) {
+    return null;
+  }
+  return 'Workspace ID của Anthropic phải bắt đầu bằng "wrkspc_".';
+}
+
 // ── Trạng thái từng loại khoá (Anthropic Claude) ─────────────────────────
 
 /// Trạng thái hiển thị của một loại khoá.

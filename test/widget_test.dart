@@ -65,7 +65,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('Xin chào, Minh Anh'), findsOneWidget);
-    expect(find.text('Tổng token tháng này'), findsOneWidget);
+    expect(find.text('Tổng token đã ghi nhận'), findsOneWidget);
     expect(find.text('Tổng quan'), findsWidgets);
 
     // Cuộn xuống để thấy phần phân bổ nhà cung cấp.
@@ -106,7 +106,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('Xin chào, Google User'), findsOneWidget);
-    expect(find.text('Tổng token tháng này'), findsOneWidget);
+    expect(find.text('Tổng token đã ghi nhận'), findsOneWidget);
   });
 
   testWidgets('Người dùng hủy chọn Google không hiển thị banner lỗi', (
