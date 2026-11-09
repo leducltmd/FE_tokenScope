@@ -235,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return _historyController.records.fold<int>(
       0,
-      (sum, r) => sum + r.promptTokens,
+      (sum, r) => sum + r.inputTokens,
     );
   }
 
@@ -246,7 +246,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return _historyController.records.fold<int>(
       0,
-      (sum, r) => sum + r.completionTokens,
+      (sum, r) => sum + r.outputTokens,
     );
   }
 
@@ -861,6 +861,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String? finalUrl;
     String? uploadError;
     bool isCompleted = false;
+    bool isFallbackUsed = false;
 
     await showDialog<void>(
       context: context,
@@ -916,8 +917,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                     setDialogState(() {
                       isCompleted = true;
+                      isFallbackUsed = result.isFallback;
                       finalUrl = result.downloadUrl;
-                      uploadStatus = 'Tải lên hoàn tất thành công!';
+                      uploadStatus = result.isFallback
+                          ? 'Xuất báo cáo thành công (Chế độ Dự phòng)!'
+                          : 'Tải lên hoàn tất thành công!';
                     });
                   } else {
                     await _firebase.recordError(
@@ -984,13 +988,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Đã lưu báo cáo thành công:',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.emerald,
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                isFallbackUsed
+                                    ? Icons.folder_special_rounded
+                                    : Icons.cloud_done_rounded,
+                                color: AppColors.emerald,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isFallbackUsed
+                                    ? 'Đã lưu trữ an toàn (Chế độ Dự phòng):'
+                                    : 'Đã lưu báo cáo thành công:',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.emerald,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(

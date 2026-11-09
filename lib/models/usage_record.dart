@@ -86,6 +86,12 @@ class UsageRecord {
   /// Định dạng token đầu vào: `1.420`
   String get formattedInputTokens => formatNumber(inputTokens);
 
+  /// Bí danh tương thích cho promptTokens (theo chuẩn backend / OpenAI).
+  int get promptTokens => inputTokens;
+
+  /// Bí danh tương thích cho completionTokens (theo chuẩn backend / OpenAI).
+  int get completionTokens => outputTokens;
+
   /// Định dạng token đầu ra: `580`
   String get formattedOutputTokens => formatNumber(outputTokens);
 
