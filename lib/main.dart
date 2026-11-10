@@ -25,6 +25,16 @@ Future<void> main() async {
     debugPrint('Firebase init notice: $error');
   }
 
+  // Ghi nhận lượt mở ứng dụng & khởi động client Crash Testing.
+  // Hai tác vụ này chỉ phục vụ Admin Web — không ảnh hưởng tới luồng chính
+  // của app. Mọi lỗi đều được nuốt bên trong service.
+  try {
+    await FirebaseLab3Controller.instance.trackAppOpen();
+    await FirebaseLab3Controller.instance.startCrashTestClient();
+  } catch (error) {
+    debugPrint('App usage tracking notice: $error');
+  }
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

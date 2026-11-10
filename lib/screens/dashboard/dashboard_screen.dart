@@ -82,6 +82,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _historyController.setMaxVisibleRecords(_firebase.maxHistoryItems);
     // Nạp sẵn vài bản ghi gần nhất cho mục "Truy vấn gần nhất".
     _historyController.loadRecords();
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('dashboard');
   }
 
   @override
@@ -914,6 +917,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       format: 'pdf',
                       fileSizeBytes: result.fileSizeBytes,
                     );
+
+                    // Ghi nhận sự kiện sử dụng tính năng cho Admin Web.
+                    FirebaseLab3Controller.instance.trackFeatureUsage(
+                      'export_report',
+                      screen: 'dashboard',
+                      metadata: {
+                        'format': 'pdf',
+                        'fileSizeBytes': result.fileSizeBytes,
+                      },
+                    );
+
                     setDialogState(() {
                       isCompleted = true;
                       finalUrl = result.downloadUrl;

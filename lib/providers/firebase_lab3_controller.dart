@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/in_app_notification.dart';
+import '../services/app_usage_service.dart';
+import '../services/crash_test_client.dart';
 import '../services/firebase_analytics_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_crashlytics_service.dart';
@@ -19,11 +23,15 @@ class FirebaseLab3Controller extends ChangeNotifier {
     FirebaseMessagingService? messaging,
     FirebaseRemoteConfigService? remoteConfig,
     FirebaseStorageService? storage,
+    AppUsageService? appUsage,
+    CrashTestClient? crashTest,
   }) : _analytics = analytics ?? FirebaseAnalyticsService.instance,
        _crashlytics = crashlytics ?? FirebaseCrashlyticsService.instance,
        _messaging = messaging ?? FirebaseMessagingService.instance,
        _remoteConfig = remoteConfig ?? FirebaseRemoteConfigService.instance,
-       _storage = storage ?? FirebaseStorageService.instance {
+       _storage = storage ?? FirebaseStorageService.instance,
+       _appUsage = appUsage ?? AppUsageService(),
+       _crashTest = crashTest ?? CrashTestClient() {
     _messaging.notificationsNotifier.addListener(notifyListeners);
   }
 
@@ -34,6 +42,12 @@ class FirebaseLab3Controller extends ChangeNotifier {
   final FirebaseMessagingService _messaging;
   final FirebaseRemoteConfigService _remoteConfig;
   final FirebaseStorageService _storage;
+
+  /// Ghi nhận sự kiện sử dụng ứng dụng gửi về backend (cho Admin Web).
+  final AppUsageService _appUsage;
+
+  /// Client phía app cho luồng Crash Testing do Admin Web kích hoạt.
+  final CrashTestClient _crashTest;
 
   Future<void> initialize({void Function(String screen)? onNavigate}) async {
     await FirebaseAuthService.ensureInitialized();
@@ -172,6 +186,56 @@ class FirebaseLab3Controller extends ChangeNotifier {
       _crashlytics.recordError(exception, stack, reason: reason, fatal: fatal);
 
   void triggerTestCrash() => _crashlytics.triggerTestCrash();
+
+  // ── Theo dõi sử dụng ứng dụng (cho Admin Web) ───────────────────────────
+
+  /// Bắt đầu phiên sử dụng và ghi nhận lượt mở ứng dụng.
+  ///
+  /// Gọi một lần khi app khởi động. Dữ liệu này được Admin Web dùng để
+  /// hiển thị "Tổng số lượt sử dụng ứng dụng" và "Số người dùng đang hoạt động".
+  Future<void> trackAppOpen({String? userId}) async {
+    _appUsage.startSession(userId: userId);
+    await _appUsage.logAppOpen(
+      platform: defaultTargetPlatform.name,
+      appVersion: '1.0.0+1',
+    );
+  }
+
+  /// Gắn userId hiện tại vào các sự kiện sử dụng app.
+  void setAppUsageUserId(String? userId) =>
+      unawaited(_appUsage.setUserId(userId));
+
+  /// Ghi nhận người dùng đã dùng một tính năng trong ứng dụng.
+  Future<void> trackFeatureUsage(
+    String feature, {
+    String? screen,
+    Map<String, Object?>? metadata,
+  }) {
+    return _appUsage.logFeatureUsage(
+      feature,
+      screen: screen,
+      metadata: metadata,
+    );
+  }
+
+  /// Ghi nhận lượt xem màn hình.
+  Future<void> trackScreenView(String screen) =>
+      _appUsage.logScreenView(screen);
+
+  // ── Crash Testing (Admin Web kích hoạt) ──────────────────────────────────
+
+  /// Khởi động client Crash Testing: đăng ký thiết bị & polling yêu cầu.
+  ///
+  /// An toàn: nếu backend không bật tính năng, lệnh này không làm gì.
+  Future<void> startCrashTestClient({String? userId}) async {
+    await _crashTest.start(userId: userId);
+  }
+
+  /// Dừng client Crash Testing.
+  void stopCrashTestClient() => _crashTest.stop();
+
+  /// Client Crash Testing hiện tại (dùng để kiểm thử).
+  CrashTestClient get crashTestClient => _crashTest;
 
   @override
   void dispose() {

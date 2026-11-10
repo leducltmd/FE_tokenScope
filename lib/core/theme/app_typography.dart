@@ -54,6 +54,15 @@ abstract final class AppTypography {
     color: Color(0xFF475569),
   );
 
+  /// Nội dung — 16px · Thường (400).
+  static const TextStyle bodyMedium = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    height: 1.5,
+    color: Color(0xFF111827),
+  );
+
   /// Nhãn — 14px · Trung bình (500).
   static const TextStyle label = TextStyle(
     fontFamily: fontFamily,

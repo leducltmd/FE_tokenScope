@@ -37,7 +37,7 @@ class AuthController extends ChangeNotifier {
   AuthUser? get user => _user;
 
   /// Tên hiển thị trên dashboard — lấy từ họ tên người dùng.
-  String get displayName => _user?.displayName ?? 'Minh Anh';
+  String get displayName => _user?.displayName ?? 'Admin Token Scope';
 
   /// Tên gọi thân mật — tên đệm + tên (hai từ cuối của họ tên).
   String get shortName => _user?.shortName ?? displayName;
@@ -186,6 +186,9 @@ class AuthController extends ChangeNotifier {
           'auth_provider',
           _user?.authProvider ?? 'password',
         );
+
+        // Gắn userId cho sự kiện sử dụng ứng dụng (Admin Web).
+        FirebaseLab3Controller.instance.setAppUsageUserId(_user!.id!);
       }
       FirebaseLab3Controller.instance.logLogin(
         method: _user?.authProvider ?? 'email_password',

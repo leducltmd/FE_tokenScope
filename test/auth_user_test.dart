@@ -46,6 +46,11 @@ void main() {
       const user = AuthUser(name: '  Nguyễn   Minh   Anh  ');
       expect(user.shortName, 'Minh Anh');
     });
+
+    test('tên chức vụ giữ nguyên toàn bộ', () {
+      const user = AuthUser(name: 'Admin Token Scope');
+      expect(user.shortName, 'Admin Token Scope');
+    });
   });
 
   group('AuthUser.fromJson', () {

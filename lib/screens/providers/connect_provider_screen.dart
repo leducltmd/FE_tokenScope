@@ -97,6 +97,9 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
       _provider = _findProvider(widget.initialProviderId!);
       _nameController.text = _provider?.name ?? '';
     }
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('connect_provider');
   }
 
   @override
@@ -643,6 +646,13 @@ class _ConnectProviderScreenState extends State<ConnectProviderScreen> {
     FirebaseLab3Controller.instance.logConnectProvider(
       providerType: _provider!.id,
       hasAdminKey: _adminApiKeyValue != null && _adminApiKeyValue!.isNotEmpty,
+    );
+
+    // Ghi nhận sự kiện sử dụng tính năng cho Admin Web.
+    FirebaseLab3Controller.instance.trackFeatureUsage(
+      'connect_provider',
+      screen: 'connect_provider',
+      metadata: {'provider': _provider!.id},
     );
 
     widget.onConnected?.call(name, _provider!);

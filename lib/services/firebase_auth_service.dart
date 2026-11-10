@@ -198,6 +198,7 @@ class FirebaseAuthService implements AuthService {
     }
   }
 
+  @override
   Future<AuthResult?> restoreSession() async {
     if (!_hasFirebaseAuth) return null;
     try {

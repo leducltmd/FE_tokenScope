@@ -7,6 +7,7 @@ import '../../core/widgets/ts_loading.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../models/usage_analysis.dart';
 import '../../providers/analysis_controller.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import 'widgets/analysis_charts.dart';
 
 /// Màn hình "Phân tích sử dụng AI".
@@ -52,6 +53,9 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
   void initState() {
     super.initState();
     _controller.load();
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('ai_analysis');
   }
 
   // ── Chuyển dữ liệu thật sang model hiển thị ───────────────────────────

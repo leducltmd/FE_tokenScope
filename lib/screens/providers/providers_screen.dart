@@ -7,6 +7,7 @@ import '../../core/widgets/ts_bottom_navigation.dart';
 import '../../core/widgets/ts_loading.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../models/provider_connection.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import '../../providers/providers_controller.dart';
 import 'connect_provider_screen.dart';
 import 'widgets/provider_keys_sheet.dart';
@@ -55,6 +56,9 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
   void initState() {
     super.initState();
     _controller.loadProviders();
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('providers');
   }
 
   @override

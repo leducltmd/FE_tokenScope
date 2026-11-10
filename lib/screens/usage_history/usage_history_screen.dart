@@ -23,7 +23,7 @@ class UsageHistoryScreen extends StatefulWidget {
     this.controller,
     this.onNotifications,
     this.onAvatar,
-    this.userName = 'Minh Anh',
+    this.userName = 'Admin Token Scope',
     this.embedded = false,
   });
 
@@ -52,6 +52,9 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
         );
       }
     });
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('usage_history');
   }
 
   @override
@@ -266,6 +269,8 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
   Widget _buildLoadMoreButton() {
     final visible = _controller.visibleCount;
     final total = UsageRecord.formatNumber(_controller.totalCount);
+    final effectiveTotal =
+        UsageRecord.formatNumber(_controller.effectiveTotalCount);
 
     return Column(
       children: [
@@ -324,7 +329,7 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'Đã hiển thị toàn bộ $total bản ghi ghi nhận',
+              'Đã hiển thị toàn bộ $effectiveTotal bản ghi ghi nhận',
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.secondaryText,
                 fontSize: 12,
@@ -333,8 +338,7 @@ class _UsageHistoryScreenState extends State<UsageHistoryScreen> {
           ),
         const SizedBox(height: AppSpacing.space8),
         Text(
-          'Hiển thị $visible / $total bản ghi ghi nhận',
-          style: const TextStyle(
+          'Hiển thị $visible / $total bản ghi ghi nhận',          style: const TextStyle(
             fontFamily: AppTypography.fontFamily,
             fontSize: 12,
             color: Color(0xFF94A3B8),

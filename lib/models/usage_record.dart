@@ -89,6 +89,12 @@ class UsageRecord {
   /// Định dạng token đầu ra: `580`
   String get formattedOutputTokens => formatNumber(outputTokens);
 
+  /// Alias theo tên trường của backend (`promptTokens`).
+  int get promptTokens => inputTokens;
+
+  /// Alias theo tên trường của backend (`completionTokens`).
+  int get completionTokens => outputTokens;
+
   /// Định dạng tổng token: `2.000`
   String get formattedTotalTokens => formatNumber(totalTokens);
 

@@ -51,6 +51,7 @@ class AuthUser {
     this.birthDate,
     this.avatarUrl,
     this.authProvider = 'password',
+    this.role = 'user',
   });
 
   final String? id;
@@ -63,6 +64,12 @@ class AuthUser {
 
   /// Phương thức xác thực: 'password' (Backend) hoặc 'google' (Firebase).
   final String? authProvider;
+
+  /// Vai trò trong hệ thống: 'user' hoặc 'admin'.
+  final String? role;
+
+  /// Người dùng có quyền quản trị viên hay không.
+  bool get isAdmin => role == 'admin';
 
   /// Tên hiển thị — ưu tiên tên đầy đủ, fallback sang email.
   String get displayName {
@@ -79,8 +86,13 @@ class AuthUser {
   ///
   /// "Nguyễn Minh Anh" → "Minh Anh" · "Nguyễn Văn Minh Anh" → "Minh Anh" ·
   /// "Minh Anh" → "Minh Anh" · "Minh" → "Minh".
+  ///
+  /// Tên chức vụ (bắt đầu bằng "Admin") giữ nguyên toàn bộ: "Admin Token Scope"
+  /// → "Admin Token Scope".
   String get shortName {
-    final parts = displayName
+    final full = displayName.trim();
+    if (full.toLowerCase().startsWith('admin')) return full;
+    final parts = full
         .split(RegExp(r'\s+'))
         .where((p) => p.isNotEmpty)
         .toList();
@@ -97,6 +109,7 @@ class AuthUser {
       birthDate: rawDate == null ? null : _formatDate(rawDate),
       avatarUrl: json['avatarUrl'] as String?,
       authProvider: json['authProvider'] as String? ?? 'password',
+      role: json['role'] as String? ?? 'user',
     );
   }
 

@@ -35,9 +35,18 @@ class UsageHistoryController extends ChangeNotifier {
   List<UsageRecord> get records => List.unmodifiable(_records);
   int get totalCount => _totalCount;
   int get visibleCount => _records.length;
-  bool get hasMore => _records.length < _totalCount;
-  bool get isEmpty => !_isLoading && !_hasError && _records.isEmpty;
 
+  /// Tổng số bản ghi thực sự có thể xem trong phiên này.
+  ///
+  /// Khác với [totalCount] (tổng thật từ server), giá trị này bị giới hạn bởi
+  /// [maxVisibleRecords] — tránh hiển thị "Tải thêm" khi đã tải hết phần được
+  /// phép hiển thị theo cấu hình Remote Config.
+  int get effectiveTotalCount =>
+      _totalCount > _maxVisibleRecords ? _maxVisibleRecords : _totalCount;
+
+  bool get hasMore => _records.length < effectiveTotalCount;
+  bool get isEmpty => !_isLoading && !_hasError && _records.isEmpty;
+    
   String get searchQuery => _searchQuery;
   String get selectedProvider => _selectedProvider;
   String get selectedTimeRange => _selectedTimeRange;
@@ -52,9 +61,6 @@ class UsageHistoryController extends ChangeNotifier {
       _records = _records.take(_maxVisibleRecords).toList();
       _offset = _records.length;
     }
-    _totalCount = _totalCount > _maxVisibleRecords
-        ? _maxVisibleRecords
-        : _totalCount;
     notifyListeners();
   }
 
@@ -92,7 +98,7 @@ class UsageHistoryController extends ChangeNotifier {
       );
 
       _records = fetched.take(_maxVisibleRecords).toList();
-      _totalCount = total > _maxVisibleRecords ? _maxVisibleRecords : total;
+      _totalCount = total;
       _offset = fetched.length;
       _hasError = false;
       _errorMessage = null;

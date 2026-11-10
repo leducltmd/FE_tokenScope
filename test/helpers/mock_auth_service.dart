@@ -95,6 +95,7 @@ class MockAuthService implements AuthService {
     );
   }
 
+  @override
   Future<AuthResult?> restoreSession() async {
     return null;
   }

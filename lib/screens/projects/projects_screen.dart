@@ -7,6 +7,7 @@ import '../../core/widgets/ts_bottom_navigation.dart';
 import '../../core/widgets/ts_loading.dart';
 import '../../core/widgets/ts_states.dart';
 import '../../models/project_connection.dart';
+import '../../providers/firebase_lab3_controller.dart';
 import '../../providers/projects_controller.dart';
 import 'widgets/project_widgets.dart';
 
@@ -48,6 +49,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   void initState() {
     super.initState();
     _controller.loadProjects();
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('projects');
   }
 
   // ── Chuyển dữ liệu thật sang model hiển thị ───────────────────────────

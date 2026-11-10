@@ -25,6 +25,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
   void initState() {
     super.initState();
     _firebase.markAllNotificationsAsRead();
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('alerts');
   }
 
   void _copyTokenToClipboard() {

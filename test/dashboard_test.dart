@@ -39,13 +39,16 @@ void main() {
     // Đầu trang.
     expect(find.text('TokenScope'), findsOneWidget);
     expect(find.text('Live'), findsOneWidget);
-    expect(find.text('Xin chào, Minh Anh'), findsOneWidget);
+    expect(find.text('Xin chào, Admin Token Scope'), findsOneWidget);
     expect(find.text('Theo dõi token & chi phí AI đa nền tảng'), findsOneWidget);
     expect(find.text('Đồng bộ 1m trước'), findsOneWidget);
 
     // Cảnh báo ngân sách.
     expect(find.text('Cảnh báo ngân sách'), findsOneWidget);
-    expect(find.text('34.80 USD đã dùng'), findsOneWidget);
+    expect(
+      find.textContaining('Tổng chi phí AI trong kỳ hiện tại là \$34.80'),
+      findsOneWidget,
+    );
 
     // Thẻ chỉ số nổi bật.
     expect(find.text('2.450.000'), findsOneWidget);

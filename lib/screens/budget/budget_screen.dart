@@ -67,6 +67,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
   void initState() {
     super.initState();
     _controller.load();
+
+    // Ghi nhận lượt mở màn hình cho Admin Web (bảng "sự kiện tính năng").
+    FirebaseLab3Controller.instance.trackScreenView('budget');
   }
 
   @override
