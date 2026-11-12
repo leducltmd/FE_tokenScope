@@ -11,6 +11,7 @@ import '../../core/widgets/ts_states.dart';
 import '../../models/provider_connection.dart';
 import '../../providers/providers_controller.dart';
 import 'connect_provider_screen.dart';
+import 'widgets/gemini_usage_dialog.dart';
 import 'widgets/provider_keys_sheet.dart';
 import 'widgets/provider_widgets.dart';
 
@@ -328,9 +329,21 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
                   size: 20,
                   color: AppColors.primary,
                 ),
-                title: Text('Đồng bộ usage & billing', style: AppTypography.label),
+                title: Text(
+                  provider.providerType == 'google'
+                      ? 'Xem token Gemini'
+                      : 'Đồng bộ usage & billing',
+                  style: AppTypography.label,
+                ),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
+                  if (provider.providerType == 'google') {
+                    await showDialog<void>(
+                      context: context,
+                      builder: (_) => GeminiUsageDialog(providerId: provider.id),
+                    );
+                    return;
+                  }
                   await _sync(provider);
                 },
               ),
