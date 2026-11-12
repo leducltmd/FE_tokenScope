@@ -4,9 +4,11 @@ import '../models/in_app_notification.dart';
 import '../services/firebase_analytics_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_crashlytics_service.dart';
+import '../services/firebase_firestore_service.dart';
 import '../services/firebase_messaging_service.dart';
 import '../services/firebase_remote_config_service.dart';
 import '../services/firebase_storage_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// ViewModel boundary for all Lab 3 Firebase capabilities.
 ///
@@ -19,11 +21,13 @@ class FirebaseLab3Controller extends ChangeNotifier {
     FirebaseMessagingService? messaging,
     FirebaseRemoteConfigService? remoteConfig,
     FirebaseStorageService? storage,
+    FirebaseFirestoreService? firestore,
   }) : _analytics = analytics ?? FirebaseAnalyticsService.instance,
        _crashlytics = crashlytics ?? FirebaseCrashlyticsService.instance,
        _messaging = messaging ?? FirebaseMessagingService.instance,
        _remoteConfig = remoteConfig ?? FirebaseRemoteConfigService.instance,
-       _storage = storage ?? FirebaseStorageService.instance {
+       _storage = storage ?? FirebaseStorageService.instance,
+       _firestore = firestore ?? FirebaseFirestoreService.instance {
     _messaging.notificationsNotifier.addListener(notifyListeners);
   }
 
@@ -34,6 +38,7 @@ class FirebaseLab3Controller extends ChangeNotifier {
   final FirebaseMessagingService _messaging;
   final FirebaseRemoteConfigService _remoteConfig;
   final FirebaseStorageService _storage;
+  final FirebaseFirestoreService _firestore;
 
   Future<void> initialize({void Function(String screen)? onNavigate}) async {
     await FirebaseAuthService.ensureInitialized();
@@ -108,6 +113,32 @@ class FirebaseLab3Controller extends ChangeNotifier {
     return _storage.uploadReportPdf(pdfBytes: pdfBytes, onProgress: onProgress);
   }
 
+  /// Xuất báo cáo lên Cloud Firestore.
+  Future<FirestoreExportResult> exportReportToFirestore({
+    required String userName,
+    required String userEmail,
+    required int totalTokens,
+    required double totalCost,
+    required int requestCount,
+    required List<Map<String, dynamic>> providers,
+    String? customNote,
+  }) {
+    return _firestore.exportReport(
+      userName: userName,
+      userEmail: userEmail,
+      totalTokens: totalTokens,
+      totalCost: totalCost,
+      requestCount: requestCount,
+      providers: providers,
+      customNote: customNote,
+    );
+  }
+
+  /// Lấy Stream danh sách báo cáo trên Cloud Firestore.
+  Stream<QuerySnapshot<Map<String, dynamic>>> getFirestoreReports() {
+    return _firestore.getReportsStream();
+  }
+
   Future<void> logLogin({required String method}) =>
       _analytics.logLogin(method: method);
 
@@ -148,9 +179,13 @@ class FirebaseLab3Controller extends ChangeNotifier {
 
   Future<void> logExportReport({
     required String format,
-    required int fileSizeBytes,
-  }) =>
-      _analytics.logExportReport(format: format, fileSizeBytes: fileSizeBytes);
+    int fileSizeBytes = 0,
+    String destination = 'cloud_firestore',
+  }) => _analytics.logExportReport(
+    format: format,
+    fileSizeBytes: fileSizeBytes,
+    destination: destination,
+  );
 
   Future<void> logUpdateBudget({
     required bool hasLimit,

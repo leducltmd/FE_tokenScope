@@ -278,6 +278,7 @@ void main() {
             controller: controller,
             dashboardController: buildFakeDashboardController(),
             historyController: buildFakeHistoryController(),
+            budgetController: buildFakeBudgetController(),
           ),
         ),
       );
@@ -320,6 +321,7 @@ void main() {
             controller: controller,
             dashboardController: buildFakeDashboardController(),
             historyController: buildFakeHistoryController(),
+            budgetController: buildFakeBudgetController(),
           ),
         ),
       );

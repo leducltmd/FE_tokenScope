@@ -88,7 +88,7 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
             ),
             TsBottomNavigation(
               items: _navItems,
-              currentIndex: 0,
+              currentIndex: -1,
               onChanged: _onNavChanged,
             ),
           ],
@@ -462,9 +462,8 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
     }
   }
 
-  /// Điều hướng dưới — chọn mục khác sẽ quay lại bảng điều khiển tổng quan.
+  /// Điều hướng dưới — bấm vào tab nào sẽ chuyển thẳng về tab đó trên màn hình chính.
   void _onNavChanged(int index) {
-    if (index == 0) return;
-    Navigator.of(context).maybePop();
+    Navigator.of(context).pop(index);
   }
 }

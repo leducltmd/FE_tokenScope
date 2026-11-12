@@ -183,7 +183,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     ),
                     children: [
                       ProjectsHeader(
-                        onNotifications: widget.onBack,
+                        onBack:
+                            widget.onBack ?? () => Navigator.of(context).maybePop(),
                       ),
                       const SizedBox(height: AppSpacing.space24),
                       _buildTitleRow(),
@@ -218,7 +219,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             ),
             TsBottomNavigation(
               items: _navItems,
-              currentIndex: 1,
+              currentIndex: -1,
               onChanged: _onNavChanged,
             ),
           ],
@@ -408,10 +409,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     }).toList();
   }
 
-  /// Điều hướng dưới — chọn mục khác sẽ quay lại bảng điều khiển tổng quan.
+  /// Điều hướng dưới — bấm vào tab nào sẽ chuyển thẳng về tab đó trên màn hình chính.
   void _onNavChanged(int index) {
-    if (index == 1) return;
-    Navigator.of(context).maybePop();
+    Navigator.of(context).pop(index);
   }
 
   /// Chip nhà cung cấp chưa có hành động.

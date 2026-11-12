@@ -62,16 +62,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
   }
 
-  void _handleNotificationTap(InAppNotification notification) {
+  void _handleNotificationTap(InAppNotification notification) async {
     final screen = notification.targetScreen;
     if (screen == 'budget') {
-      Navigator.of(
+      final targetTab = await Navigator.of(
         context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const BudgetScreen()));
+      ).push<int>(MaterialPageRoute<int>(builder: (_) => const BudgetScreen()));
+      if (targetTab != null && mounted) {
+        Navigator.of(context).pop(targetTab);
+      }
     } else if (screen == 'providers') {
-      Navigator.of(
+      final targetTab = await Navigator.of(
         context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const ProvidersScreen()));
+      ).push<int>(MaterialPageRoute<int>(builder: (_) => const ProvidersScreen()));
+      if (targetTab != null && mounted) {
+        Navigator.of(context).pop(targetTab);
+      }
     } else {
       ScaffoldMessenger.of(
         context,

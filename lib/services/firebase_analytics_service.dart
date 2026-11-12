@@ -117,10 +117,11 @@ class FirebaseAnalyticsService {
     } catch (_) {}
   }
 
-  /// Sự kiện 6: Xuất báo cáo PDF.
+  /// Sự kiện 6: Xuất báo cáo (Firestore / Storage).
   Future<void> logExportReport({
     required String format,
-    required int fileSizeBytes,
+    int fileSizeBytes = 0,
+    String destination = 'cloud_firestore',
   }) async {
     if (!_hasFirebase) return;
     try {
@@ -129,7 +130,7 @@ class FirebaseAnalyticsService {
         parameters: {
           'format': format,
           'file_size_kb': (fileSizeBytes / 1024).round(),
-          'storage_destination': 'firebase_storage',
+          'storage_destination': destination,
         },
       );
     } catch (_) {}

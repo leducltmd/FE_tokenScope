@@ -122,15 +122,25 @@ class Project {
 class ProjectsHeader extends StatelessWidget {
   const ProjectsHeader({
     super.key,
+    this.onBack,
     this.onNotifications,
   });
 
+  final VoidCallback? onBack;
   final VoidCallback? onNotifications;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
+        if (onBack != null || Navigator.of(context).canPop()) ...[
+          _RoundIconButton(
+            icon: Icons.arrow_back_rounded,
+            tooltip: 'Quay lại',
+            onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+          ),
+          const SizedBox(width: AppSpacing.space12),
+        ],
         const TsLogo(size: 32),
         const SizedBox(width: AppSpacing.space12),
         const Flexible(

@@ -69,6 +69,14 @@ class ApiClient {
     return _send('POST', path, body: body);
   }
 
+  /// PUT với body JSON.
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    return _send('PUT', path, body: body);
+  }
+
   /// PATCH với body JSON.
   Future<Map<String, dynamic>> patch(
     String path, {
@@ -163,6 +171,7 @@ class ApiClient {
     final response = switch (method) {
       'GET' => await _client.get(uri, headers: headers),
       'POST' => await _client.post(uri, headers: headers, body: encoded),
+      'PUT' => await _client.put(uri, headers: headers, body: encoded),
       'PATCH' => await _client.patch(uri, headers: headers, body: encoded),
       'DELETE' => await _client.delete(uri, headers: headers),
       _ => throw ApiException('Phương thức HTTP không được hỗ trợ: $method'),

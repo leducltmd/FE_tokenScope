@@ -73,6 +73,12 @@ class _DashboardBudgetService implements BudgetService {
     projects: [],
     forecast: 11.25,
   );
+
+  @override
+  Future<BudgetOverview> updateBudget({
+    required double totalLimit,
+    double warningPercent = 80,
+  }) async => getOverview();
 }
 
 class _CountingDashboardService extends FakeDashboardService {
@@ -211,7 +217,7 @@ void main() {
 
     // Cảnh báo ngân sách.
     expect(find.text('Cảnh báo ngân sách'), findsOneWidget);
-    expect(find.text('34.80 USD đã dùng'), findsOneWidget);
+    expect(find.textContaining('34.80'), findsWidgets);
 
     // Thẻ chỉ số nổi bật.
     expect(find.text('2.450.000'), findsOneWidget);

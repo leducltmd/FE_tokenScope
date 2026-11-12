@@ -6,7 +6,6 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/ts_bottom_navigation.dart';
 import '../../core/widgets/ts_button.dart';
 import '../../core/widgets/ts_card.dart';
-import '../../core/widgets/ts_dialog.dart';
 import '../../core/widgets/ts_loading.dart';
 import '../../core/widgets/ts_logo.dart';
 import '../../core/widgets/ts_states.dart';
@@ -24,13 +23,21 @@ import 'widgets/budget_widgets.dart';
 ///
 /// Toàn bộ số liệu đến từ backend thật (`GET /api/budgets`).
 class BudgetScreen extends StatefulWidget {
-  const BudgetScreen({super.key, this.onBack, this.controller});
+  const BudgetScreen({
+    super.key,
+    this.onBack,
+    this.controller,
+    this.embedded = false,
+  });
 
   /// Quay lại màn hình trước (dùng khi mở dạng trang riêng).
   final VoidCallback? onBack;
 
   /// Controller dùng chung — nếu null thì tự tạo.
   final BudgetController? controller;
+
+  /// Được nhúng trực tiếp trong DashboardScreen (Tab 2) hay mở dạng route riêng.
+  final bool embedded;
 
   @override
   State<BudgetScreen> createState() => _BudgetScreenState();
@@ -73,76 +80,87 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        if (_controller.isLoading && _controller.overview == null) {
+          return const SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.screenPadding),
+              child: Column(
+                children: [
+                  TsSkeletonCard(height: 140),
+                  SizedBox(height: AppSpacing.space12),
+                  TsSkeletonCard(height: 170),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (_controller.hasError && _controller.overview == null) {
+          return TsErrorState(
+            title: 'Không thể tải ngân sách',
+            message:
+                _controller.errorMessage ??
+                'Đã xảy ra lỗi khi kết nối máy chủ. Vui lòng thử lại.',
+            actionLabel: 'Thử lại ngay',
+            onRetry: () => _controller.load(),
+          );
+        }
+
+        final overview = _controller.overview;
+        if (overview == null) return const SizedBox.shrink();
+        final percent = overview.percent;
+
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () => _controller.load(),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding,
+              AppSpacing.space8,
+              AppSpacing.screenPadding,
+              AppSpacing.space32,
+            ),
+            children: [
+              _buildHeader(overview),
+              const SizedBox(height: AppSpacing.space16),
+              _buildTotalBudgetCard(overview, percent),
+              const SizedBox(height: AppSpacing.space12),
+              _buildAlertBanner(overview),
+              const SizedBox(height: AppSpacing.space16),
+              _buildProgressSection(overview, percent),
+              const SizedBox(height: AppSpacing.space16),
+              _buildForecastCard(overview),
+              const SizedBox(height: AppSpacing.space12),
+              _buildRateLimitCard(),
+              const SizedBox(height: AppSpacing.space24),
+              _buildAllocationSection(overview),
+              const SizedBox(height: AppSpacing.space24),
+              _buildAdjustCard(overview),
+              const SizedBox(height: AppSpacing.space12),
+              _buildBillingHistory(),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            Expanded(
-              child: ListenableBuilder(
-                listenable: _controller,
-                builder: (context, _) {
-                  if (_controller.isLoading && _controller.overview == null) {
-                    return const SingleChildScrollView(
-                      child: Padding(
-                        padding: EdgeInsets.all(AppSpacing.screenPadding),
-                        child: Column(
-                          children: [
-                            TsSkeletonCard(height: 140),
-                            SizedBox(height: AppSpacing.space12),
-                            TsSkeletonCard(height: 170),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (_controller.hasError && _controller.overview == null) {
-                    return TsErrorState(
-                      title: 'Không thể tải ngân sách',
-                      message:
-                          _controller.errorMessage ??
-                          'Đã xảy ra lỗi khi kết nối máy chủ. Vui lòng thử lại.',
-                      actionLabel: 'Thử lại ngay',
-                      onRetry: () => _controller.load(),
-                    );
-                  }
-
-                  final overview = _controller.overview;
-                  if (overview == null) return const SizedBox.shrink();
-                  final percent = overview.percent;
-
-                  return ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screenPadding,
-                      AppSpacing.space8,
-                      AppSpacing.screenPadding,
-                      AppSpacing.space32,
-                    ),
-                    children: [
-                      _buildHeader(overview),
-                      const SizedBox(height: AppSpacing.space16),
-                      _buildTotalBudgetCard(overview, percent),
-                      const SizedBox(height: AppSpacing.space12),
-                      _buildAlertBanner(overview),
-                      const SizedBox(height: AppSpacing.space16),
-                      _buildProgressSection(overview, percent),
-                      const SizedBox(height: AppSpacing.space16),
-                      _buildForecastCard(overview),
-                      const SizedBox(height: AppSpacing.space12),
-                      _buildRateLimitCard(),
-                      const SizedBox(height: AppSpacing.space24),
-                      _buildAllocationSection(overview),
-                      const SizedBox(height: AppSpacing.space24),
-                      _buildAdjustCard(overview),
-                      const SizedBox(height: AppSpacing.space12),
-                      _buildBillingHistory(),
-                    ],
-                  );
-                },
-              ),
-            ),
+            Expanded(child: content),
             TsBottomNavigation(
               items: _navItems,
               currentIndex: 2,
@@ -154,10 +172,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  /// Điều hướng dưới — "Ngân sách" đang chọn, các mục khác quay lại dashboard.
+  /// Điều hướng dưới — bấm vào tab nào sẽ chuyển thẳng về tab đó trên màn hình chính.
   void _onNavChanged(int index) {
-    if (index == 2) return;
-    Navigator.of(context).maybePop();
+    Navigator.of(context).pop(index);
   }
 
   // ── Đầu trang ─────────────────────────────────────────────────────────
@@ -185,15 +202,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             const SizedBox(width: AppSpacing.space8),
             const _LiveBadge(),
-            const Spacer(),
-            IconButton(
-              onPressed:
-                  widget.onBack ?? () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back_rounded, size: 22),
-              color: AppColors.navy,
-              tooltip: 'Quay lại',
-              constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-            ),
           ],
         ),
         const SizedBox(height: AppSpacing.space12),
@@ -318,13 +326,25 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   // ── Dải cảnh báo ──────────────────────────────────────────────────────
   Widget _buildAlertBanner(BudgetOverview overview) {
-    return BudgetAlertBanner(
-      title:
-          'CẢNH BÁO: Đã vượt ngưỡng an toàn '
-          '${_alertThreshold.toStringAsFixed(0)}%',
-      message:
-          '(\$${overview.threshold.toStringAsFixed(2)}). Tốc độ sử dụng cao!',
-      onTap: () => _scrollToAdjust(),
+    if (overview.totalLimit <= 0 || overview.spent < overview.threshold) {
+      return const SizedBox.shrink();
+    }
+
+    final isOverLimit = overview.spent >= overview.totalLimit;
+    final warningPct = overview.totalLimit > 0
+        ? ((overview.threshold / overview.totalLimit) * 100).round()
+        : 80;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space16),
+      child: BudgetAlertBanner(
+        title: isOverLimit
+            ? 'CẢNH BÁO: Đã chạm trần hạn mức 100%!'
+            : 'CẢNH BÁO: Đã vượt ngưỡng an toàn $warningPct%',
+        message:
+            '(\$${overview.threshold.toStringAsFixed(2)}). Tốc độ sử dụng cao!',
+        onTap: () => _scrollToAdjust(),
+      ),
     );
   }
 
@@ -528,18 +548,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Row(
             children: [
               Expanded(
-                child: _MiniStat(
-                  label: 'Hạn mức',
-                  value: '\$${overview.totalLimit.toStringAsFixed(2)}',
-                  color: AppColors.navy,
+                child: InkWell(
+                  onTap: () => _showAdjustBudgetDialog(overview),
+                  borderRadius: BorderRadius.circular(8),
+                  child: _MiniStat(
+                    label: 'Hạn mức',
+                    value: '\$${overview.totalLimit.toStringAsFixed(2)}',
+                    color: AppColors.navy,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.space12),
               Expanded(
-                child: _MiniStat(
-                  label: 'Ngưỡng cảnh báo',
-                  value: '${_alertThreshold.toStringAsFixed(0)}%',
-                  color: AppColors.warning,
+                child: InkWell(
+                  onTap: () => _showAdjustBudgetDialog(overview),
+                  borderRadius: BorderRadius.circular(8),
+                  child: _MiniStat(
+                    label: 'Ngưỡng cảnh báo',
+                    value: '${_alertThreshold.toStringAsFixed(0)}%',
+                    color: AppColors.warning,
+                  ),
                 ),
               ),
             ],
@@ -547,8 +575,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
           const SizedBox(height: AppSpacing.space16),
           TsButton(
             label: 'Lưu ngân sách',
-            icon: Icons.save_rounded,
-            onPressed: _confirmSaveBudget,
+            icon: Icons.tune_rounded,
+            onPressed: () => _showAdjustBudgetDialog(overview),
           ),
         ],
       ),
@@ -650,37 +678,119 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   void _scrollToAdjust() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Điều chỉnh hạn mức ở mục "Điều chỉnh ngân sách".'),
-      ),
-    );
+    final overview = _controller.overview;
+    if (overview != null) {
+      _showAdjustBudgetDialog(overview);
+    }
   }
 
-  Future<void> _confirmSaveBudget() async {
-    final overview = _controller.overview;
-    final totalLimit = overview?.totalLimit ?? 0;
-
-    final confirmed = await TsDialog.show(
-      context,
-      title: 'Lưu ngân sách mới?',
-      message:
-          'Hạn mức tháng này sẽ được đặt thành \$${totalLimit.toStringAsFixed(2)} '
-          'USD. Bạn sẽ nhận cảnh báo khi sử dụng đến '
-          '${_alertThreshold.toStringAsFixed(0)}%.',
-      confirmLabel: 'Lưu ngân sách',
+  Future<void> _showAdjustBudgetDialog(BudgetOverview overview) async {
+    final limitController = TextEditingController(
+      text: overview.totalLimit > 0
+          ? overview.totalLimit.toStringAsFixed(0)
+          : '500',
     );
-    if (!confirmed || !mounted) return;
+    double threshold = _alertThreshold;
 
-    // Ghi nhận sự kiện Analytics khi cập nhật ngân sách.
-    FirebaseLab3Controller.instance.logUpdateBudget(
-      hasLimit: totalLimit > 0,
-      warningPercent: _alertThreshold.round(),
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Điều chỉnh ngân sách'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Hạn mức hàng tháng (USD):',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: limitController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  prefixText: '\$ ',
+                  border: OutlineInputBorder(),
+                  hintText: 'Nhập số tiền (VD: 500)',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Ngưỡng cảnh báo:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${threshold.toStringAsFixed(0)}%',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ],
+              ),
+              Slider(
+                value: threshold,
+                min: 50,
+                max: 100,
+                divisions: 10,
+                activeColor: AppColors.primary,
+                label: '${threshold.toStringAsFixed(0)}%',
+                onChanged: (val) => setDialogState(() => threshold = val),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text('Lưu'),
+            ),
+          ],
+        ),
+      ),
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã cập nhật ngân sách tháng 11.')),
+    if (updated != true || !mounted) return;
+
+    final newLimit =
+        double.tryParse(limitController.text) ?? overview.totalLimit;
+    final success = await _controller.updateBudget(
+      totalLimit: newLimit,
+      warningPercent: threshold,
     );
+
+    if (mounted) {
+      if (success) {
+        FirebaseLab3Controller.instance.logUpdateBudget(
+          hasLimit: newLimit > 0,
+          warningPercent: threshold.round(),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đã cập nhật ngân sách thành \$${newLimit.toStringAsFixed(2)} USD thành công!',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _controller.errorMessage ?? 'Không thể lưu ngân sách.',
+            ),
+          ),
+        );
+      }
+    }
   }
 }
 

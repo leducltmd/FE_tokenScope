@@ -71,6 +71,14 @@ class FakeBudgetService implements BudgetService {
       ],
     );
   }
+
+  @override
+  Future<BudgetOverview> updateBudget({
+    required double totalLimit,
+    double warningPercent = 80,
+  }) async {
+    return getOverview();
+  }
 }
 
 /// Controller ngân sách dùng service giả lập.

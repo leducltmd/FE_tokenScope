@@ -50,6 +50,35 @@ class BudgetController extends ChangeNotifier {
     }
   }
 
+  /// Cập nhật hạn mức ngân sách và ngưỡng cảnh báo lên backend.
+  Future<bool> updateBudget({
+    required double totalLimit,
+    double warningPercent = 80,
+  }) async {
+    if (_isDisposed) return false;
+    _isLoading = true;
+    _hasError = false;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _overview = await _service.updateBudget(
+        totalLimit: totalLimit,
+        warningPercent: warningPercent,
+      );
+      _hasError = false;
+      _errorMessage = null;
+      return true;
+    } catch (error) {
+      _hasError = true;
+      _errorMessage = error.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      if (!_isDisposed) notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
